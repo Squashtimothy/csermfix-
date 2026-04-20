@@ -7,10 +7,6 @@ import {
   createProject,
   updateProject,
   deleteProject,
-  getProjectBlocksAdmin,
-  createProjectBlock,
-  updateProjectBlock,
-  deleteProjectBlock,
   resolveProjectImage,
 } from "../../services/projectService";
 
@@ -26,16 +22,6 @@ const initialProjectForm = {
   is_featured: 0,
   is_active: 1,
   order_number: 1,
-};
-
-const initialBlockForm = {
-  file: null,
-  title: "",
-  content: "",
-  layout_type: "text-left-image-right",
-  image_style: "rounded-2xl",
-  order_number: 1,
-  is_active: 1,
 };
 
 const initialPageSettingsForm = {
@@ -58,18 +44,11 @@ export default function ProjectManagement() {
   const [submittingProject, setSubmittingProject] = useState(false);
 
   const [selectedProjectId, setSelectedProjectId] = useState(null);
-  const [blocks, setBlocks] = useState([]);
-  const [loadingBlocks, setLoadingBlocks] = useState(false);
-  const [submittingBlock, setSubmittingBlock] = useState(false);
 
   const [editProjectId, setEditProjectId] = useState(null);
   const [currentProjectImage, setCurrentProjectImage] = useState("");
 
-  const [editBlockId, setEditBlockId] = useState(null);
-  const [currentBlockImage, setCurrentBlockImage] = useState("");
-
   const [projectForm, setProjectForm] = useState(initialProjectForm);
-  const [blockForm, setBlockForm] = useState(initialBlockForm);
 
   const [pageSettingsForm, setPageSettingsForm] = useState(
     initialPageSettingsForm
@@ -82,12 +61,6 @@ export default function ProjectManagement() {
     setEditProjectId(null);
     setCurrentProjectImage("");
     setProjectForm(initialProjectForm);
-  };
-
-  const resetBlockForm = () => {
-    setEditBlockId(null);
-    setCurrentBlockImage("");
-    setBlockForm(initialBlockForm);
   };
 
   const getPublicProjectUrl = (project) => {
@@ -144,7 +117,6 @@ export default function ProjectManagement() {
 
         if (rows.length === 0) {
           setSelectedProjectId(null);
-          setBlocks([]);
           return;
         }
 
@@ -171,37 +143,10 @@ export default function ProjectManagement() {
     [selectedProjectId]
   );
 
-  const loadBlocks = useCallback(async (projectId) => {
-    if (!projectId) {
-      setBlocks([]);
-      return;
-    }
-
-    try {
-      setLoadingBlocks(true);
-      const res = await getProjectBlocksAdmin(projectId);
-      const data = normalizeResponseData(res);
-      setBlocks(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setBlocks([]);
-      Swal.fire(
-        "Error",
-        err?.response?.data?.message || "Gagal memuat block project",
-        "error"
-      );
-    } finally {
-      setLoadingBlocks(false);
-    }
-  }, []);
-
   useEffect(() => {
     loadPageSettings();
     loadProjects();
   }, [loadPageSettings, loadProjects]);
-
-  useEffect(() => {
-    loadBlocks(selectedProjectId);
-  }, [selectedProjectId, loadBlocks]);
 
   const onPageSettingsChange = (e) => {
     const { name, value } = e.target;
@@ -230,25 +175,9 @@ export default function ProjectManagement() {
     }));
   };
 
-  const onBlockChange = (e) => {
-    const { name, value } = e.target;
-
-    setBlockForm((prev) => ({
-      ...prev,
-      [name]: ["is_active", "order_number"].includes(name)
-        ? Number(value)
-        : value,
-    }));
-  };
-
   const onProjectFileChange = (e) => {
     const file = e.target.files?.[0] || null;
     setProjectForm((prev) => ({ ...prev, file }));
-  };
-
-  const onBlockFileChange = (e) => {
-    const file = e.target.files?.[0] || null;
-    setBlockForm((prev) => ({ ...prev, file }));
   };
 
   const heroPreview = useMemo(() => {
@@ -271,16 +200,6 @@ export default function ProjectManagement() {
     return "";
   }, [projectForm.file, currentProjectImage]);
 
-  const blockPreview = useMemo(() => {
-    if (blockForm.file) {
-      return URL.createObjectURL(blockForm.file);
-    }
-    if (currentBlockImage) {
-      return resolveProjectImage(currentBlockImage);
-    }
-    return "";
-  }, [blockForm.file, currentBlockImage]);
-
   useEffect(() => {
     return () => {
       if (pageSettingsForm.file && heroPreview?.startsWith("blob:")) {
@@ -297,14 +216,6 @@ export default function ProjectManagement() {
     };
   }, [projectPreview, projectForm.file]);
 
-  useEffect(() => {
-    return () => {
-      if (blockForm.file && blockPreview?.startsWith("blob:")) {
-        URL.revokeObjectURL(blockPreview);
-      }
-    };
-  }, [blockPreview, blockForm.file]);
-
   const onEditProject = (item) => {
     setEditProjectId(item.id);
     setCurrentProjectImage(item.featured_image || "");
@@ -320,21 +231,6 @@ export default function ProjectManagement() {
       is_featured: Number(item.is_featured ?? 0),
       is_active: Number(item.is_active ?? 1),
       order_number: Number(item.order_number ?? 1),
-    });
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const onEditBlock = (item) => {
-    setEditBlockId(item.id);
-    setCurrentBlockImage(item.image || "");
-    setBlockForm({
-      file: null,
-      title: item.title || "",
-      content: item.content || "",
-      layout_type: item.layout_type || "text-left-image-right",
-      image_style: item.image_style || "rounded-2xl",
-      order_number: Number(item.order_number ?? 1),
-      is_active: Number(item.is_active ?? 1),
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -422,7 +318,7 @@ export default function ProjectManagement() {
   const onDeleteProject = async (id) => {
     const result = await Swal.fire({
       title: "Hapus project?",
-      text: "Project dan semua block di dalamnya akan ikut terhapus.",
+      text: "Project akan dihapus permanen.",
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Ya, hapus",
@@ -437,7 +333,6 @@ export default function ProjectManagement() {
       Swal.fire("Berhasil", "Project berhasil dihapus", "success");
 
       resetProjectForm();
-      resetBlockForm();
 
       if (selectedProjectId === id) {
         setSelectedProjectId(null);
@@ -453,80 +348,6 @@ export default function ProjectManagement() {
     }
   };
 
-  const onSubmitBlock = async (e) => {
-    e.preventDefault();
-
-    if (!selectedProjectId) {
-      return Swal.fire("Error", "Pilih project terlebih dahulu", "error");
-    }
-
-    if (!blockForm.content.trim()) {
-      return Swal.fire("Error", "Content block wajib diisi", "error");
-    }
-
-    try {
-      setSubmittingBlock(true);
-
-      const fd = new FormData();
-      fd.append("title", blockForm.title.trim());
-      fd.append("content", blockForm.content.trim());
-      fd.append("layout_type", blockForm.layout_type);
-      fd.append("image_style", blockForm.image_style);
-      fd.append("order_number", String(blockForm.order_number));
-      fd.append("is_active", String(blockForm.is_active));
-
-      if (blockForm.file) {
-        fd.append("image", blockForm.file);
-      }
-
-      if (editBlockId) {
-        await updateProjectBlock(editBlockId, fd);
-        Swal.fire("Berhasil", "Block berhasil diupdate", "success");
-      } else {
-        await createProjectBlock(selectedProjectId, fd);
-        Swal.fire("Berhasil", "Block berhasil ditambahkan", "success");
-      }
-
-      resetBlockForm();
-      await loadBlocks(selectedProjectId);
-    } catch (err) {
-      Swal.fire(
-        "Error",
-        err?.response?.data?.message || "Gagal menyimpan block",
-        "error"
-      );
-    } finally {
-      setSubmittingBlock(false);
-    }
-  };
-
-  const onDeleteBlock = async (id) => {
-    const result = await Swal.fire({
-      title: "Hapus block?",
-      text: "Block ini akan dihapus permanen.",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Ya, hapus",
-      cancelButtonText: "Batal",
-      confirmButtonColor: "#d33",
-    });
-
-    if (!result.isConfirmed) return;
-
-    try {
-      await deleteProjectBlock(id);
-      Swal.fire("Berhasil", "Block berhasil dihapus", "success");
-      resetBlockForm();
-      await loadBlocks(selectedProjectId);
-    } catch (err) {
-      Swal.fire(
-        "Error",
-        err?.response?.data?.message || "Gagal menghapus block",
-        "error"
-      );
-    }
-  };
-
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-10">
       <div className="flex items-center justify-between">
@@ -535,7 +356,7 @@ export default function ProjectManagement() {
             Project Management
           </h1>
           <p className="text-gray-500">
-            Hero, project, daftar project, dan blocks dipisah jelas.
+            Hero, project, dan daftar project dipisah jelas.
           </p>
         </div>
 
@@ -686,7 +507,15 @@ export default function ProjectManagement() {
                 />
               </div>
 
-             
+              <div>
+                <label className="text-sm font-medium">Slug</label>
+                <input
+                  name="slug"
+                  value={projectForm.slug}
+                  onChange={onProjectChange}
+                  className="w-full border rounded-xl px-3 py-2 mt-1"
+                />
+              </div>
 
               <div>
                 <label className="text-sm font-medium">Short Description</label>
@@ -980,7 +809,6 @@ export default function ProjectManagement() {
           </div>
         )}
       </div>
-
     </div>
   );
 }
