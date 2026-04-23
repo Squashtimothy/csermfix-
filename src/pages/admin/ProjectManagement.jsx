@@ -58,9 +58,7 @@ export default function ProjectManagement() {
   const [submittingProject, setSubmittingProject] = useState(false);
 
   const [selectedProjectId, setSelectedProjectId] = useState(null);
-  // FIX Line 61-63: blocks, loadingBlocks, submittingBlock hanya setter-nya yang dipakai
-  const [, setBlocks] = useState([]);
-  const [blocks, setBlocksDisplay] = useState([]);
+  const [blocks, setBlocks] = useState([]);
   const [loadingBlocks, setLoadingBlocks] = useState(false);
   const [submittingBlock, setSubmittingBlock] = useState(false);
 
@@ -147,7 +145,6 @@ export default function ProjectManagement() {
         if (rows.length === 0) {
           setSelectedProjectId(null);
           setBlocks([]);
-          setBlocksDisplay([]);
           return;
         }
 
@@ -177,7 +174,6 @@ export default function ProjectManagement() {
   const loadBlocks = useCallback(async (projectId) => {
     if (!projectId) {
       setBlocks([]);
-      setBlocksDisplay([]);
       return;
     }
 
@@ -187,10 +183,8 @@ export default function ProjectManagement() {
       const data = normalizeResponseData(res);
       const blockData = Array.isArray(data) ? data : [];
       setBlocks(blockData);
-      setBlocksDisplay(blockData);
     } catch (err) {
       setBlocks([]);
-      setBlocksDisplay([]);
       Swal.fire(
         "Error",
         err?.response?.data?.message || "Gagal memuat block project",
@@ -558,7 +552,6 @@ export default function ProjectManagement() {
         </button>
       </div>
 
-      {/* HERO SECTION */}
       <div className="bg-white border rounded-2xl p-6 shadow-sm">
         <div className="mb-5">
           <h2 className="text-2xl font-bold text-slate-800">Hero Section</h2>
@@ -671,7 +664,6 @@ export default function ProjectManagement() {
         )}
       </div>
 
-      {/* PROJECT FORM */}
       <div className="bg-white border rounded-2xl p-6 shadow-sm">
         <div className="mb-5">
           <h2 className="text-2xl font-bold text-slate-800">Project Form</h2>
@@ -688,6 +680,16 @@ export default function ProjectManagement() {
                 <input
                   name="title"
                   value={projectForm.title}
+                  onChange={onProjectChange}
+                  className="w-full border rounded-xl px-3 py-2 mt-1"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Slug</label>
+                <input
+                  name="slug"
+                  value={projectForm.slug}
                   onChange={onProjectChange}
                   className="w-full border rounded-xl px-3 py-2 mt-1"
                 />
@@ -847,7 +849,6 @@ export default function ProjectManagement() {
         </form>
       </div>
 
-      {/* DAFTAR PROJECT */}
       <div className="bg-white border rounded-2xl p-6 shadow-sm">
         <h2 className="text-2xl font-bold text-slate-800 mb-5">
           Daftar Project
@@ -986,7 +987,6 @@ export default function ProjectManagement() {
         )}
       </div>
 
-      {/* BLOCK SECTION - tampilkan blocks dari project yang dipilih */}
       {selectedProjectId && (
         <div className="bg-white border rounded-2xl p-6 shadow-sm">
           <h2 className="text-2xl font-bold text-slate-800 mb-5">
@@ -996,30 +996,48 @@ export default function ProjectManagement() {
           {loadingBlocks ? (
             <div className="text-gray-500">Loading blocks...</div>
           ) : blocks.length === 0 ? (
-            <div className="text-gray-500">Belum ada block untuk project ini.</div>
+            <div className="text-gray-500">
+              Belum ada block untuk project ini.
+            </div>
           ) : (
             <div className="space-y-4">
               {blocks.map((blk) => (
-                <div key={blk.id} className="border rounded-xl p-4 flex items-start gap-4">
+                <div
+                  key={blk.id}
+                  className="border rounded-xl p-4 flex items-start gap-4"
+                >
                   {blk.image && (
                     <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                       <img
                         src={resolveProjectImage(blk.image)}
-                        alt={blk.title}
+                        alt={blk.title || "Block image"}
                         className="w-full h-full object-cover"
                       />
                     </div>
                   )}
+
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-slate-800">{blk.title || "(no title)"}</div>
-                    <div className="text-sm text-gray-600 mt-1 line-clamp-3">{blk.content}</div>
+                    <div className="font-semibold text-slate-800">
+                      {blk.title || "(no title)"}
+                    </div>
+                    <div className="text-sm text-gray-600 mt-1 line-clamp-3">
+                      {blk.content}
+                    </div>
                     <div className="text-xs text-gray-400 mt-2">
-                      layout: {blk.layout_type} • order: {blk.order_number} • status:{" "}
-                      <span className={Number(blk.is_active) ? "text-[#1e9c2d]" : "text-gray-400"}>
+                      layout: {blk.layout_type} • order: {blk.order_number} •
+                      status:{" "}
+                      <span
+                        className={
+                          Number(blk.is_active)
+                            ? "text-[#1e9c2d]"
+                            : "text-gray-400"
+                        }
+                      >
                         {Number(blk.is_active) ? "active" : "inactive"}
                       </span>
                     </div>
                   </div>
+
                   <div className="flex flex-col gap-2">
                     <button
                       type="button"
@@ -1041,11 +1059,11 @@ export default function ProjectManagement() {
             </div>
           )}
 
-          {/* BLOCK FORM */}
           <div className="mt-8 border-t pt-6">
             <h3 className="text-lg font-bold text-slate-800 mb-4">
               {editBlockId ? "Edit Block" : "Tambah Block"}
             </h3>
+
             <form onSubmit={onSubmitBlock} className="space-y-4">
               <div>
                 <label className="text-sm font-medium">Title Block</label>
@@ -1077,8 +1095,12 @@ export default function ProjectManagement() {
                     onChange={onBlockChange}
                     className="w-full border rounded-xl px-3 py-2 mt-1"
                   >
-                    <option value="text-left-image-right">Text Left / Image Right</option>
-                    <option value="image-left-text-right">Image Left / Text Right</option>
+                    <option value="text-left-image-right">
+                      Text Left / Image Right
+                    </option>
+                    <option value="image-left-text-right">
+                      Image Left / Text Right
+                    </option>
                     <option value="full-text">Full Text</option>
                     <option value="full-image">Full Image</option>
                   </select>
@@ -1134,7 +1156,8 @@ export default function ProjectManagement() {
                   onChange={onBlockFileChange}
                   className="w-full border rounded-xl px-3 py-2 mt-1"
                 />
-                {blockPreview && (
+
+                {blockPreview ? (
                   <div className="mt-3 border rounded-xl overflow-hidden">
                     <img
                       src={blockPreview}
@@ -1142,7 +1165,7 @@ export default function ProjectManagement() {
                       className="w-full h-[200px] object-cover"
                     />
                   </div>
-                )}
+                ) : null}
               </div>
 
               <div className="flex gap-2">
