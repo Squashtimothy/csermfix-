@@ -8,14 +8,28 @@ dotenv.config();
 const app = express();
 
 /* ======================
+   DEBUG ENV
+====================== */
+console.log("PORT:", process.env.PORT);
+console.log("CORS_ORIGIN:", process.env.CORS_ORIGIN);
+
+/* ======================
    MIDDLEWARE
 ====================== */
 
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(",")
+  : ["*"];
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN
-      ? process.env.CORS_ORIGIN.split(",")
-      : "*",
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("CORS not allowed"));
+      }
+    },
     credentials: true,
   })
 );
@@ -30,16 +44,12 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
    ROUTES
 ====================== */
 
-// WAJIB pakai .js supaya pasti file yang benar
 const authRoutes = require("./routes/authRoutes.js");
 const newsRoutes = require("./routes/newsRoutes.js");
 const teamRoutes = require("./routes/teamRoutes.js");
 const publicationRoutes = require("./routes/publicationRoutes.js");
 const homepageRoutes = require("./routes/homepageRoutes.js");
 const projectRoutes = require("./routes/projectRoutes.js");
-
-// DEBUG
-console.log("homepageRoutes type:", typeof homepageRoutes);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/news", newsRoutes);
@@ -53,7 +63,11 @@ app.use("/api/projects", projectRoutes);
 ====================== */
 
 app.get("/", (req, res) => {
-  res.json({ message: "Server berjalan", status: "ok" });
+  res.json({
+    message: "Backend is running 🚀",
+    status: "ok",
+    port: process.env.PORT,
+  });
 });
 
 /* ======================
@@ -85,6 +99,8 @@ app.use((err, req, res, next) => {
 ====================== */
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+
+//  : bind ke 0.0.0.0 supaya Railway bisa akses
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(` Server running on port ${PORT}`);
 });
