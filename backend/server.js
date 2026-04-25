@@ -11,6 +11,7 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const path = require("path");
 
+// Load ENV
 dotenv.config();
 
 const app = express();
@@ -20,6 +21,23 @@ const app = express();
 ====================== */
 console.log("PORT:", process.env.PORT);
 console.log("CORS_ORIGIN:", process.env.CORS_ORIGIN);
+console.log("DB_HOST:", process.env.DB_HOST);
+console.log("DB_NAME:", process.env.DB_NAME);
+
+/* ======================
+   DB CONNECTION TEST
+====================== */
+const db = require("./config/db");
+
+(async () => {
+  try {
+    const [rows] = await db.query("SHOW TABLES");
+    console.log("DB CONNECTED SUCCESSFULLY");
+    console.log("Tables:", rows);
+  } catch (err) {
+    console.error("DB CONNECTION FAILED:(:", err.message);
+  }
+})();
 
 /* ======================
    MIDDLEWARE
@@ -72,14 +90,14 @@ app.use("/api/projects", projectRoutes);
 
 app.get("/", (req, res) => {
   res.json({
-    message: "Backend is running 🚀",
+    message: "Backend is running smoothly",
     status: "ok",
     port: process.env.PORT,
   });
 });
 
 /* ======================
-   404
+   404 HANDLER
 ====================== */
 
 app.use((req, res) => {
@@ -94,7 +112,9 @@ app.use((err, req, res, next) => {
   console.error("GLOBAL ERROR:", err);
 
   if (err.code === "LIMIT_FILE_SIZE") {
-    return res.status(400).json({ message: "File terlalu besar (maks 2MB)" });
+    return res.status(400).json({
+      message: "File terlalu besar (maks 2MB)",
+    });
   }
 
   return res.status(500).json({
@@ -103,12 +123,21 @@ app.use((err, req, res, next) => {
 });
 
 /* ======================
+   GRACEFUL SHUTDOWN
+====================== */
+
+process.on("SIGTERM", () => {
+  console.log("SIGTERM received. Shutting down...");
+  process.exit(0);
+});
+
+/* ======================
    START SERVER
 ====================== */
 
 const PORT = process.env.PORT || 5000;
 
-//  : bind ke 0.0.0.0 supaya Railway bisa akses
+// Railway wajib pakai 0.0.0.0
 app.listen(PORT, "0.0.0.0", () => {
   console.log(` Server running on port ${PORT}`);
 });
