@@ -22,8 +22,6 @@ exports.getPublications = async (req, res) => {
 
     let orderBy = "year DESC";
     if (sort === "year_asc") orderBy = "year ASC";
-    if (sort === "newest") orderBy = "created_at DESC";
-    if (sort === "oldest") orderBy = "created_at ASC";
 
     const searchQuery = `%${search}%`;
 
@@ -34,12 +32,10 @@ exports.getPublications = async (req, res) => {
          title LIKE ? OR
          authors LIKE ? OR
          journal LIKE ? OR
-         doi LIKE ? OR
-         keywords LIKE ?
+         doi LIKE ?
        ORDER BY ${orderBy}
        LIMIT ? OFFSET ?`,
       [
-        searchQuery,
         searchQuery,
         searchQuery,
         searchQuery,
@@ -56,9 +52,8 @@ exports.getPublications = async (req, res) => {
          title LIKE ? OR
          authors LIKE ? OR
          journal LIKE ? OR
-         doi LIKE ? OR
-         keywords LIKE ?`,
-      [searchQuery, searchQuery, searchQuery, searchQuery, searchQuery]
+         doi LIKE ?`,
+      [searchQuery, searchQuery, searchQuery, searchQuery]
     );
 
     const total = countRows[0].total;
@@ -84,15 +79,7 @@ exports.getPublications = async (req, res) => {
 ========================= */
 exports.createPublication = async (req, res) => {
   try {
-    const {
-      title,
-      authors,
-      year,
-      journal,
-      url,
-      doi,
-      keywords,
-    } = req.body || {};
+    const { title, authors, year, journal, url, doi } = req.body || {};
 
     if (!title || !authors || !year || !url) {
       return res.status(400).json({
@@ -102,16 +89,15 @@ exports.createPublication = async (req, res) => {
 
     await db.query(
       `INSERT INTO publications
-       (title, authors, year, journal, url, doi, keywords)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       (title, authors, year, journal, url, doi)
+       VALUES (?, ?, ?, ?, ?, ?)`,
       [
         title,
-        authors, // sudah bisa <b>...</b>
+        authors,
         year,
         journal || null,
         url,
         doi || null,
-        keywords || null,
       ]
     );
 
@@ -128,15 +114,7 @@ exports.createPublication = async (req, res) => {
 exports.updatePublication = async (req, res) => {
   try {
     const { id } = req.params;
-    const {
-      title,
-      authors,
-      year,
-      journal,
-      url,
-      doi,
-      keywords,
-    } = req.body || {};
+    const { title, authors, year, journal, url, doi } = req.body || {};
 
     const [rows] = await db.query(
       "SELECT id FROM publications WHERE id = ?",
@@ -154,8 +132,7 @@ exports.updatePublication = async (req, res) => {
         year = ?,
         journal = ?,
         url = ?,
-        doi = ?,
-        keywords = ?
+        doi = ?
        WHERE id = ?`,
       [
         title,
@@ -164,7 +141,6 @@ exports.updatePublication = async (req, res) => {
         journal || null,
         url,
         doi || null,
-        keywords || null,
         id,
       ]
     );
