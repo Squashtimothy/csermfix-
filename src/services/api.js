@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = "https://csermfix-production.up.railway.app";
+const API_BASE_URL = "https://resilient-balance.up.railway.app";
 
 console.log("API BASE URL:", API_BASE_URL);
 
