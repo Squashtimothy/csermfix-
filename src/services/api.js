@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const API_BASE_URL = "https://resilient-balance.up.railway.app";
+const API_BASE_URL =
+"https://resilient-balance-production-57f8.up.railway.app";
 
 console.log("API BASE URL:", API_BASE_URL);
 
