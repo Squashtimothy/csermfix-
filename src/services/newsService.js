@@ -1,7 +1,7 @@
 import axios from "axios";
 
-const API = "http://localhost:5000/api/news";
-
+const API =
+  `${process.env.REACT_APP_API_URL}/api/news`;
 // ==================== AUTH HEADER ====================
 const getAuthHeaders = (type = "json") => {
   const token = localStorage.getItem("token");

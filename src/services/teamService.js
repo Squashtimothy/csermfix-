@@ -1,23 +1,77 @@
 import axios from "axios";
 
-const API = "http://localhost:5000/api/teams";
+const API = `${
+  process.env.REACT_APP_API_URL ||
+  "https://resilient-balance-production-57f8.up.railway.app"
+}/api/teams`;
+
+/* =========================
+   AUTH HEADER
+========================= */
 
 const getAuthHeaders = (isMultipart = false) => {
   const token = localStorage.getItem("token");
+
   if (!token) return {};
+
   return {
     Authorization: `Bearer ${token}`,
-    ...(isMultipart && { "Content-Type": "multipart/form-data" }),
+
+    ...(isMultipart && {
+      "Content-Type": "multipart/form-data",
+    }),
   };
 };
 
-export const getTeams = () => axios.get(API);
+/* =========================
+   GET TEAMS
+========================= */
 
-export const createTeam = (data) =>
-  axios.post(API, data, { headers: getAuthHeaders(true) });
+export const getTeams = async () => {
+  const response = await axios.get(API);
 
-export const updateTeam = (id, data) =>
-  axios.put(`${API}/${id}`, data, { headers: getAuthHeaders(true) });
+  return response.data;
+};
 
-export const deleteTeam = (id) =>
-  axios.delete(`${API}/${id}`, { headers: getAuthHeaders() });
+/* =========================
+   CREATE TEAM
+========================= */
+
+export const createTeam = async (data) => {
+  const response = await axios.post(API, data, {
+    headers: getAuthHeaders(true),
+  });
+
+  return response.data;
+};
+
+/* =========================
+   UPDATE TEAM
+========================= */
+
+export const updateTeam = async (id, data) => {
+  const response = await axios.put(
+    `${API}/${id}`,
+    data,
+    {
+      headers: getAuthHeaders(true),
+    }
+  );
+
+  return response.data;
+};
+
+/* =========================
+   DELETE TEAM
+========================= */
+
+export const deleteTeam = async (id) => {
+  const response = await axios.delete(
+    `${API}/${id}`,
+    {
+      headers: getAuthHeaders(),
+    }
+  );
+
+  return response.data;
+};
