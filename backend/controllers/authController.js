@@ -8,7 +8,7 @@ const jwt = require("jsonwebtoken");
 
 async function login(req, res) {
   try {
-    console.log("=== LOGIN REQUEST ===");
+    console.log("=== login request ===");
 
     const username = (req.body?.username || "").trim();
     const password = req.body?.password || "";
