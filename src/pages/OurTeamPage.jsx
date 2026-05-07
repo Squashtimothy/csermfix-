@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import Navbar from "../components/navbar";
 import axios from "axios";
 
-const API_BASE_URL = (process.env.REACT_APP_API_URL || "http://localhost:5000").replace(/\/$/, "");
+const API_BASE_URL = (
+  process.env.REACT_APP_API_URL ||
+  "https://resilient-balance-production-57f8.up.railway.app"
+).replace(/\/$/, "");
 
 export default function OurTeam() {
   const [teams, setTeams] = useState([]);

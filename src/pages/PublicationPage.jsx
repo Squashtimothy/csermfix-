@@ -10,7 +10,10 @@ import {
 import Navbar from "../components/navbar";
 import publicationHero from "../assets/foto1.jpg";
 
-const API_BASE_URL = (process.env.REACT_APP_API_URL || "http://localhost:5000").replace(/\/$/, "");
+const API_BASE_URL = (
+  process.env.REACT_APP_API_URL ||
+  "https://resilient-balance-production-57f8.up.railway.app"
+).replace(/\/$/, "");
 
 export default function PublicationPage() {
   const [rows, setRows] = useState([]);
