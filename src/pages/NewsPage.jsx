@@ -4,6 +4,10 @@ import newsHero from "../assets/recentNews.jpg";
 import { useNavigate } from "react-router-dom";
 import { getPublishedNews } from "../services/newsService";
 
+const API_BASE =
+  process.env.REACT_APP_API_URL ||
+  "https://resilient-balance-production-57f8.up.railway.app";
+
 export default function NewsPage() {
   const [newsList, setNewsList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,10 +22,21 @@ export default function NewsPage() {
   // ========================
   const fetchNews = async () => {
     try {
+      setLoading(true);
+
       const res = await getPublishedNews();
 
-      //   FILTER EXTRA (ANTI BUG)
-      const publishedOnly = res.data.filter(
+      console.log("NEWS RESPONSE:", res.data);
+
+      // HANDLE SEMUA BENTUK RESPONSE
+      const data = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data.data)
+        ? res.data.data
+        : [];
+
+      // FILTER HANYA NEWS PUBLISHED
+      const publishedOnly = data.filter(
         (item) => item.status === "published"
       );
 
@@ -29,12 +44,12 @@ export default function NewsPage() {
 
       setNewsList(publishedOnly);
 
-      //   FIX: reset page kalau data berkurang
+      // reset pagination
       setCurrentPage(1);
-
-      setLoading(false);
     } catch (err) {
       console.error("Gagal ambil news:", err);
+      setNewsList([]);
+    } finally {
       setLoading(false);
     }
   };
@@ -42,7 +57,7 @@ export default function NewsPage() {
   useEffect(() => {
     fetchNews();
 
-    // polling tiap 10 detik
+    // auto refresh tiap 10 detik
     const interval = setInterval(fetchNews, 10000);
 
     return () => clearInterval(interval);
@@ -53,14 +68,23 @@ export default function NewsPage() {
   // ========================
   const indexOfLastNews = currentPage * newsPerPage;
   const indexOfFirstNews = indexOfLastNews - newsPerPage;
-  const currentNews = newsList.slice(indexOfFirstNews, indexOfLastNews);
+
+  const currentNews = newsList.slice(
+    indexOfFirstNews,
+    indexOfLastNews
+  );
 
   const totalPages = Math.ceil(newsList.length / newsPerPage);
 
   const handlePageChange = (pageNumber) => {
     if (pageNumber < 1 || pageNumber > totalPages) return;
+
     setCurrentPage(pageNumber);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   };
 
   return (
@@ -72,7 +96,9 @@ export default function NewsPage() {
         <div className="max-w-7xl mx-auto px-6 w-full h-full">
           <div
             className="w-full h-full bg-cover bg-center rounded-3xl shadow-2xl"
-            style={{ backgroundImage: `url(${newsHero})` }}
+            style={{
+              backgroundImage: `url(${newsHero})`,
+            }}
           ></div>
         </div>
       </div>
@@ -83,14 +109,18 @@ export default function NewsPage() {
           RECENT NEWS
         </h2>
 
+        {/* LOADING */}
         {loading ? (
-          <p className="text-center text-gray-500">Loading news...</p>
+          <p className="text-center text-gray-500">
+            Loading news...
+          </p>
         ) : newsList.length === 0 ? (
           <p className="text-center text-gray-500">
             Belum ada news tersedia
           </p>
         ) : (
           <>
+            {/* GRID */}
             <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-10">
               {currentNews.map((item) => (
                 <div
@@ -101,7 +131,7 @@ export default function NewsPage() {
                   <img
                     src={
                       item.image
-                        ? `http://localhost:5000/uploads/${item.image}`
+                        ? `${API_BASE}/uploads/${item.image}`
                         : "https://via.placeholder.com/400x300?text=No+Image"
                     }
                     alt={item.title}
@@ -109,15 +139,15 @@ export default function NewsPage() {
                   />
 
                   <div className="p-5">
-                    <h3 className="font-semibold mt-2 text-lg text-gray-800">
+                    <h3 className="font-semibold mt-2 text-lg text-gray-800 line-clamp-2">
                       {item.title}
                     </h3>
 
-                    <p className="text-gray-500 text-sm mt-1 line-clamp-2">
+                    <p className="text-gray-500 text-sm mt-2 line-clamp-3">
                       {item.content}
                     </p>
 
-                    <div className="text-green-600 text-sm mt-3 font-medium">
+                    <div className="text-green-600 text-sm mt-4 font-medium">
                       Read More →
                     </div>
                   </div>
@@ -128,21 +158,26 @@ export default function NewsPage() {
             {/* PAGINATION */}
             {totalPages > 1 && (
               <div className="flex justify-center mt-12 gap-2 flex-wrap">
+                {/* PREV */}
                 <button
-                  onClick={() => handlePageChange(currentPage - 1)}
+                  onClick={() =>
+                    handlePageChange(currentPage - 1)
+                  }
                   disabled={currentPage === 1}
                   className="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
                 >
                   Prev
                 </button>
 
+                {/* NUMBER */}
                 {[...Array(totalPages)].map((_, index) => {
                   const page = index + 1;
+
                   return (
                     <button
                       key={page}
                       onClick={() => handlePageChange(page)}
-                      className={`px-4 py-2 rounded-xl ${
+                      className={`px-4 py-2 rounded-xl transition ${
                         currentPage === page
                           ? "bg-green-600 text-white"
                           : "bg-gray-200 hover:bg-gray-300"
@@ -153,8 +188,11 @@ export default function NewsPage() {
                   );
                 })}
 
+                {/* NEXT */}
                 <button
-                  onClick={() => handlePageChange(currentPage + 1)}
+                  onClick={() =>
+                    handlePageChange(currentPage + 1)
+                  }
                   disabled={currentPage === totalPages}
                   className="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
                 >
