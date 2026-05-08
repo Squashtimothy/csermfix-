@@ -51,14 +51,14 @@ export default function TeamsManagement() {
 
       const res = await getTeams();
 
-      console.log("TEAM RESPONSE:", res.data);
+      console.log("TEAM API:", res.data);
 
-      // SUPPORT ARRAY DAN OBJECT
-      const teamsData = Array.isArray(res.data)
+      // SUPPORT ARRAY ATAU OBJECT
+      const rawData = Array.isArray(res.data)
         ? res.data
         : res.data?.data || [];
 
-      const cleaned = teamsData.map((t) => ({
+      const cleaned = rawData.map((t) => ({
         ...t,
         category: normalizeCategory(t.category),
       }));
@@ -139,7 +139,6 @@ export default function TeamsManagement() {
         normalizeCategory(form.category)
       );
 
-      // BACKEND MEMAKAI PHOTO
       if (form.photo) {
         data.append("photo", form.photo);
       }
@@ -168,7 +167,6 @@ export default function TeamsManagement() {
 
       resetForm();
 
-      // RELOAD DATA
       await loadData();
     } catch (err) {
       console.error("SAVE TEAM ERROR:", err);
@@ -308,7 +306,6 @@ export default function TeamsManagement() {
           rows={4}
         />
 
-        {/* BACKEND MEMAKAI PHOTO */}
         <input
           key={fileKey}
           type="file"
@@ -321,7 +318,7 @@ export default function TeamsManagement() {
           <button
             type="submit"
             disabled={submitting}
-            className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
+            className="bg-blue-600 text-white px-4 py-2 rounded"
           >
             {submitting
               ? "Menyimpan..."
@@ -359,7 +356,7 @@ export default function TeamsManagement() {
               src={
                 t.photo
                   ? `${API_BASE_URL}/uploads/teams/${t.photo}`
-                  : "https://via.placeholder.com/80?text=No+Image"
+                  : "https://via.placeholder.com/80?text=No+Photo"
               }
               alt={t.name}
               className="w-20 h-20 object-cover rounded-xl border"
