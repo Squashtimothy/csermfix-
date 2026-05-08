@@ -1,14 +1,6 @@
-// src/pages/admin/TeamsManagement.jsx
-
 import { useEffect, useState, useCallback } from "react";
 import Swal from "sweetalert2";
-
-import {
-  getTeams,
-  createTeam,
-  updateTeam,
-  deleteTeam,
-} from "../../services/teamService";
+import axios from "axios";
 
 const API_BASE_URL = (
   process.env.REACT_APP_API_URL ||
@@ -44,19 +36,34 @@ export default function TeamsManagement() {
     return "staff";
   };
 
+  // ================= AUTH HEADER =================
+  const getAuthHeaders = (isMultipart = false) => {
+    const token = localStorage.getItem("token");
+
+    return {
+      Authorization: `Bearer ${token}`,
+      ...(isMultipart && {
+        "Content-Type": "multipart/form-data",
+      }),
+    };
+  };
+
   // ================= LOAD DATA =================
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
 
-      const res = await getTeams();
+      const res = await axios.get(
+        `${API_BASE_URL}/api/teams`
+      );
 
-      console.log("TEAM API:", res.data);
+      console.log("TEAM RESPONSE:", res.data);
 
-      // SUPPORT ARRAY ATAU OBJECT
       const rawData = Array.isArray(res.data)
         ? res.data
-        : res.data?.data || [];
+        : Array.isArray(res.data?.data)
+        ? res.data.data
+        : [];
 
       const cleaned = rawData.map((t) => ({
         ...t,
@@ -144,7 +151,13 @@ export default function TeamsManagement() {
       }
 
       if (editId) {
-        await updateTeam(editId, data);
+        await axios.put(
+          `${API_BASE_URL}/api/teams/${editId}`,
+          data,
+          {
+            headers: getAuthHeaders(true),
+          }
+        );
 
         Swal.fire({
           icon: "success",
@@ -154,7 +167,13 @@ export default function TeamsManagement() {
           showConfirmButton: false,
         });
       } else {
-        await createTeam(data);
+        await axios.post(
+          `${API_BASE_URL}/api/teams`,
+          data,
+          {
+            headers: getAuthHeaders(true),
+          }
+        );
 
         Swal.fire({
           icon: "success",
@@ -197,7 +216,12 @@ export default function TeamsManagement() {
     if (!result.isConfirmed) return;
 
     try {
-      await deleteTeam(id);
+      await axios.delete(
+        `${API_BASE_URL}/api/teams/${id}`,
+        {
+          headers: getAuthHeaders(),
+        }
+      );
 
       Swal.fire(
         "Terhapus",
@@ -205,7 +229,7 @@ export default function TeamsManagement() {
         "success"
       );
 
-      loadData();
+      await loadData();
     } catch (err) {
       console.error("DELETE TEAM ERROR:", err);
 
@@ -396,9 +420,7 @@ export default function TeamsManagement() {
                 </button>
 
                 <button
-                  onClick={() =>
-                    handleDelete(t.id)
-                  }
+                  onClick={() => handleDelete(t.id)}
                   className="text-red-600 text-sm"
                 >
                   Hapus
