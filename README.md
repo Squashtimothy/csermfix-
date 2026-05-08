@@ -12,7 +12,7 @@
 
 <p align="center">
   🌐 <strong>Live Demo:</strong><br/>
-  <a href="https://csermunas.vercel.app/">https://csermunas.vercel.app/</a>
+  <a href="https://csermunas.vercel.app/">https://cserm.unas.ac.id/</a>
 </p>
 
 ---
