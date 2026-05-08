@@ -53,9 +53,12 @@ export default function TeamsManagement() {
 
       console.log("TEAM RESPONSE:", res.data);
 
-      const cleaned = (
-        Array.isArray(res.data) ? res.data : []
-      ).map((t) => ({
+      // SUPPORT ARRAY DAN OBJECT
+      const teamsData = Array.isArray(res.data)
+        ? res.data
+        : res.data?.data || [];
+
+      const cleaned = teamsData.map((t) => ({
         ...t,
         category: normalizeCategory(t.category),
       }));
@@ -130,6 +133,7 @@ export default function TeamsManagement() {
       data.append("name", form.name);
       data.append("position", form.position);
       data.append("bio", form.bio);
+
       data.append(
         "category",
         normalizeCategory(form.category)
@@ -163,7 +167,9 @@ export default function TeamsManagement() {
       }
 
       resetForm();
-      loadData();
+
+      // RELOAD DATA
+      await loadData();
     } catch (err) {
       console.error("SAVE TEAM ERROR:", err);
 
