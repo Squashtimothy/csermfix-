@@ -5,17 +5,29 @@ import logo from "../assets/logo.png";
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
 
-  const closeMenu = () => {
+  // =========================
+  // SMOOTH SCROLL
+  // =========================
+  const handleScroll = (id) => {
+    const section = document.getElementById(id);
+
+    if (section) {
+      section.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+
     setIsOpen(false);
   };
 
   return (
     <nav className="fixed top-0 left-0 w-full z-50 backdrop-blur-md bg-white/80 shadow-md">
       <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-        
-        {/* LOGO */}
-        <a
-          href="/"
+
+        {/* ================= LOGO ================= */}
+        <div
+          onClick={() => handleScroll("hero")}
           className="flex items-center gap-3 cursor-pointer"
         >
           <img
@@ -27,73 +39,73 @@ export default function Navbar() {
           <span className="text-xl font-bold text-[#1E9C2D] tracking-wide">
             CSERM UNAS
           </span>
-        </a>
+        </div>
 
-        {/* DESKTOP MENU */}
+        {/* ================= DESKTOP MENU ================= */}
         <ul className="hidden md:flex gap-8 font-medium text-gray-700">
           <li>
-            <a
-              href="#profile"
+            <button
+              onClick={() => handleScroll("profile")}
               className="hover:text-[#1E9C2D] transition-colors"
             >
               Profile
-            </a>
+            </button>
           </li>
 
           <li>
-            <a
-              href="#projects"
+            <button
+              onClick={() => handleScroll("projects")}
               className="hover:text-[#1E9C2D] transition-colors"
             >
               Project
-            </a>
+            </button>
           </li>
 
           <li>
-            <a
-              href="#publications"
+            <button
+              onClick={() => handleScroll("publications")}
               className="hover:text-[#1E9C2D] transition-colors"
             >
               Publications
-            </a>
+            </button>
           </li>
 
           <li>
-            <a
-              href="#ourteam"
+            <button
+              onClick={() => handleScroll("ourteam")}
               className="hover:text-[#1E9C2D] transition-colors"
             >
               CSERM Team
-            </a>
+            </button>
           </li>
 
           <li>
-            <a
-              href="#news"
+            <button
+              onClick={() => handleScroll("news")}
               className="hover:text-[#1E9C2D] transition-colors"
             >
               News
-            </a>
+            </button>
           </li>
 
           <li>
-            <a
-              href="#contact"
+            <button
+              onClick={() => handleScroll("contact")}
               className="hover:text-[#1E9C2D] transition-colors"
             >
               Contact Us
-            </a>
+            </button>
           </li>
         </ul>
 
-        {/* MOBILE BUTTON */}
+        {/* ================= MOBILE BUTTON ================= */}
         <button
           type="button"
           aria-label="Toggle Menu"
           className="md:hidden relative w-8 h-8 flex items-center justify-center"
-          onClick={() => setIsOpen((prev) => !prev)}
+          onClick={() => setIsOpen(!isOpen)}
         >
-          {/* LINE 1 */}
+          {/* TOP */}
           <span
             className={`absolute h-0.5 w-6 bg-gray-800 rounded transition-all duration-300 ${
               isOpen
@@ -102,7 +114,7 @@ export default function Navbar() {
             }`}
           />
 
-          {/* LINE 2 */}
+          {/* MIDDLE */}
           <span
             className={`absolute h-0.5 w-6 bg-gray-800 rounded transition-all duration-300 ${
               isOpen
@@ -111,7 +123,7 @@ export default function Navbar() {
             }`}
           />
 
-          {/* LINE 3 */}
+          {/* BOTTOM */}
           <span
             className={`absolute h-0.5 w-6 bg-gray-800 rounded transition-all duration-300 ${
               isOpen
@@ -122,7 +134,7 @@ export default function Navbar() {
         </button>
       </div>
 
-      {/* MOBILE MENU */}
+      {/* ================= MOBILE MENU ================= */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -134,62 +146,55 @@ export default function Navbar() {
           >
             <div className="flex flex-col px-6 py-5 space-y-4 text-center">
 
-              <a
-                href="#profile"
-                onClick={closeMenu}
-                className="block text-gray-700 hover:text-[#1E9C2D] transition"
+              <button
+                onClick={() => handleScroll("profile")}
+                className="text-gray-700 hover:text-[#1E9C2D] transition"
               >
                 Profile
-              </a>
+              </button>
 
-              <a
-                href="#projects"
-                onClick={closeMenu}
-                className="block text-gray-700 hover:text-[#1E9C2D] transition"
+              <button
+                onClick={() => handleScroll("projects")}
+                className="text-gray-700 hover:text-[#1E9C2D] transition"
               >
                 What We Do?
-              </a>
+              </button>
 
-              <a
-                href="#publications"
-                onClick={closeMenu}
-                className="block text-gray-700 hover:text-[#1E9C2D] transition"
+              <button
+                onClick={() => handleScroll("publications")}
+                className="text-gray-700 hover:text-[#1E9C2D] transition"
               >
                 Publications
-              </a>
+              </button>
 
-              <a
-                href="#ourteam"
-                onClick={closeMenu}
-                className="block text-gray-700 hover:text-[#1E9C2D] transition"
+              <button
+                onClick={() => handleScroll("ourteam")}
+                className="text-gray-700 hover:text-[#1E9C2D] transition"
               >
                 Our Team
-              </a>
+              </button>
 
-              <a
-                href="#news"
-                onClick={closeMenu}
-                className="block text-gray-700 hover:text-[#1E9C2D] transition"
+              <button
+                onClick={() => handleScroll("news")}
+                className="text-gray-700 hover:text-[#1E9C2D] transition"
               >
                 News
-              </a>
+              </button>
 
-              <a
-                href="#contact"
-                onClick={closeMenu}
-                className="block text-gray-700 hover:text-[#1E9C2D] transition"
+              <button
+                onClick={() => handleScroll("contact")}
+                className="text-gray-700 hover:text-[#1E9C2D] transition"
               >
                 Contact Us
-              </a>
+              </button>
 
-              <a
-                href="#info"
-                onClick={closeMenu}
+              <button
+                onClick={() => handleScroll("info")}
                 className="block w-full px-4 py-2 rounded-full text-white font-medium shadow-md hover:opacity-90 transition"
                 style={{ backgroundColor: "#1E9C2D" }}
               >
                 For Your Information
-              </a>
+              </button>
             </div>
           </motion.div>
         )}
