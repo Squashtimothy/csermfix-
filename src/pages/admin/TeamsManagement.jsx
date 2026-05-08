@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Swal from "sweetalert2";
+
 import {
   getTeams,
   createTeam,
@@ -25,14 +26,17 @@ export default function TeamsManagement() {
     position: "",
     bio: "",
     category: "staff",
-    image: null,
+    photo: null,
   });
 
   const [fileKey, setFileKey] = useState(Date.now());
 
-  // ================= NORMALIZE CATEGORY =================
+  // ================= CATEGORY =================
   const normalizeCategory = (c) => {
-    const val = (c || "staff").toString().trim().toLowerCase();
+    const val = (c || "staff")
+      .toString()
+      .trim()
+      .toLowerCase();
 
     if (val === "management") return "management";
     if (val === "expert") return "expert";
@@ -47,7 +51,11 @@ export default function TeamsManagement() {
 
       const res = await getTeams();
 
-      const cleaned = (Array.isArray(res.data) ? res.data : []).map((t) => ({
+      console.log("TEAM RESPONSE:", res.data);
+
+      const cleaned = (
+        Array.isArray(res.data) ? res.data : []
+      ).map((t) => ({
         ...t,
         category: normalizeCategory(t.category),
       }));
@@ -58,7 +66,8 @@ export default function TeamsManagement() {
 
       Swal.fire(
         "Error",
-        err.response?.data?.message || "Gagal ambil data team",
+        err.response?.data?.message ||
+          "Gagal ambil data team",
         "error"
       );
     } finally {
@@ -80,14 +89,14 @@ export default function TeamsManagement() {
     }));
   };
 
-  // ================= RESET FORM =================
+  // ================= RESET =================
   const resetForm = () => {
     setForm({
       name: "",
       position: "",
       bio: "",
       category: "staff",
-      image: null,
+      photo: null,
     });
 
     setEditId(null);
@@ -103,7 +112,7 @@ export default function TeamsManagement() {
       position: item.position || "",
       bio: item.bio || "",
       category: normalizeCategory(item.category),
-      image: null,
+      photo: null,
     });
 
     setFileKey(Date.now());
@@ -121,10 +130,14 @@ export default function TeamsManagement() {
       data.append("name", form.name);
       data.append("position", form.position);
       data.append("bio", form.bio);
-      data.append("category", normalizeCategory(form.category));
+      data.append(
+        "category",
+        normalizeCategory(form.category)
+      );
 
-      if (form.image) {
-        data.append("image", form.image);
+      // BACKEND MEMAKAI PHOTO
+      if (form.photo) {
+        data.append("photo", form.photo);
       }
 
       if (editId) {
@@ -156,7 +169,8 @@ export default function TeamsManagement() {
 
       Swal.fire(
         "Error",
-        err.response?.data?.message || "Gagal menyimpan team",
+        err.response?.data?.message ||
+          "Gagal menyimpan team",
         "error"
       );
     } finally {
@@ -181,7 +195,11 @@ export default function TeamsManagement() {
     try {
       await deleteTeam(id);
 
-      Swal.fire("Terhapus", "Team berhasil dihapus", "success");
+      Swal.fire(
+        "Terhapus",
+        "Team berhasil dihapus",
+        "success"
+      );
 
       loadData();
     } catch (err) {
@@ -189,7 +207,8 @@ export default function TeamsManagement() {
 
       Swal.fire(
         "Error",
-        err.response?.data?.message || "Gagal hapus team",
+        err.response?.data?.message ||
+          "Gagal hapus team",
         "error"
       );
     }
@@ -227,10 +246,15 @@ export default function TeamsManagement() {
   // ================= RENDER =================
   return (
     <div className="max-w-4xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Kelola Teams</h1>
+      <h1 className="text-2xl font-bold mb-4">
+        Kelola Teams
+      </h1>
 
       {/* FORM */}
-      <form onSubmit={handleSubmit} className="space-y-3 mb-6">
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-3 mb-6"
+      >
         <input
           name="name"
           value={form.name}
@@ -247,9 +271,17 @@ export default function TeamsManagement() {
           className="w-full border p-2 rounded"
           required
         >
-          <option value="management">CSERM MANAGEMENT</option>
-          <option value="expert">CSERM Expert Associate</option>
-          <option value="staff">CSERM STAFF</option>
+          <option value="management">
+            CSERM MANAGEMENT
+          </option>
+
+          <option value="expert">
+            CSERM Expert Associate
+          </option>
+
+          <option value="staff">
+            CSERM STAFF
+          </option>
         </select>
 
         <input
@@ -270,10 +302,11 @@ export default function TeamsManagement() {
           rows={4}
         />
 
+        {/* BACKEND MEMAKAI PHOTO */}
         <input
           key={fileKey}
           type="file"
-          name="image"
+          name="photo"
           onChange={handleChange}
           accept="image/*"
         />
@@ -307,7 +340,9 @@ export default function TeamsManagement() {
       {loading ? (
         <p>Loading...</p>
       ) : teams.length === 0 ? (
-        <p className="text-gray-500">Belum ada data team</p>
+        <p className="text-gray-500">
+          Belum ada data team
+        </p>
       ) : (
         teams.map((t) => (
           <div
@@ -316,8 +351,8 @@ export default function TeamsManagement() {
           >
             <img
               src={
-                t.image
-                  ? `${API_BASE_URL}/uploads/teams/${t.image}`
+                t.photo
+                  ? `${API_BASE_URL}/uploads/teams/${t.photo}`
                   : "https://via.placeholder.com/80?text=No+Image"
               }
               alt={t.name}
@@ -326,7 +361,9 @@ export default function TeamsManagement() {
 
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold">{t.name}</h3>
+                <h3 className="font-semibold">
+                  {t.name}
+                </h3>
 
                 <span
                   className={`text-xs px-2 py-1 rounded ${badgeClass(
@@ -337,10 +374,14 @@ export default function TeamsManagement() {
                 </span>
               </div>
 
-              <p className="text-sm text-gray-600">{t.position}</p>
+              <p className="text-sm text-gray-600">
+                {t.position}
+              </p>
 
               {t.bio && (
-                <p className="text-sm text-gray-500 mt-1">{t.bio}</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  {t.bio}
+                </p>
               )}
 
               <div className="flex gap-3 mt-2">
@@ -352,7 +393,9 @@ export default function TeamsManagement() {
                 </button>
 
                 <button
-                  onClick={() => handleDelete(t.id)}
+                  onClick={() =>
+                    handleDelete(t.id)
+                  }
                   className="text-red-600 text-sm"
                 >
                   Hapus
