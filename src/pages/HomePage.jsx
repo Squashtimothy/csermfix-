@@ -69,7 +69,7 @@ export default function HomePage() {
         "CENTRE FOR SUSTAINABLE ENERGY & RESOURCES MANAGEMENT",
 
       content:
-        "Founded in 2014, CSERM-UNAS has established itself as an internationally recognised centre for the assessment, development and promotion of sustainable resource management.",
+        "Founded in 2014, CSERM-UNAS has established itself as an internationally recognised centre for sustainable resource management and renewable energy solutions.",
     }),
     []
   );
@@ -146,172 +146,114 @@ export default function HomePage() {
   }, []);
 
   /* =========================
-      LOAD PROFILE
-  ========================= */
-
-  const loadProfile = useCallback(async (signal) => {
-    try {
-      const res = await fetch(
-        `${API_BASE}/api/homepage/profile`,
-        { signal }
-      );
-
-      if (!res.ok) {
-        throw new Error("Failed fetch profile");
-      }
-
-      const data =
-        await normalizeResponseData(res);
-
-      setProfile({
-        title:
-          data?.title ||
-          fallbackProfile.title,
-
-        content:
-          data?.description ||
-          data?.content ||
-          fallbackProfile.content,
-      });
-    } catch (err) {
-      console.error("PROFILE ERROR:", err);
-
-      setProfile(fallbackProfile);
-    }
-  }, [fallbackProfile]);
-
-  /* =========================
-      LOAD HERO
-  ========================= */
-
-  const loadHero = useCallback(async (signal) => {
-    try {
-      const res = await fetch(
-        `${API_BASE}/api/homepage/hero`,
-        { signal }
-      );
-
-      if (!res.ok) {
-        throw new Error("Failed fetch hero");
-      }
-
-      const data =
-        await normalizeResponseData(res);
-
-      setHeroSlides(
-        Array.isArray(data) ? data : []
-      );
-    } catch (err) {
-      console.error("HERO ERROR:", err);
-
-      setHeroSlides([]);
-    }
-  }, []);
-
-  /* =========================
-      LOAD AIMS
-  ========================= */
-
-  const loadAims = useCallback(async (signal) => {
-    try {
-      const res = await fetch(
-        `${API_BASE}/api/homepage/aims`,
-        { signal }
-      );
-
-      if (!res.ok) {
-        throw new Error("Failed fetch aims");
-      }
-
-      const data =
-        await normalizeResponseData(res);
-
-      setAims(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("AIMS ERROR:", err);
-
-      setAims([]);
-    }
-  }, []);
-
-  /* =========================
-      LOAD VISION MISSION
-  ========================= */
-
-  const loadVisionMission = useCallback(
-    async (signal) => {
-      try {
-        const res = await fetch(
-          `${API_BASE}/api/homepage/vision-mission`,
-          { signal }
-        );
-
-        if (!res.ok) {
-          throw new Error(
-            "Failed fetch vision mission"
-          );
-        }
-
-        const data =
-          await normalizeResponseData(res);
-
-        setVisionMission({
-          vision_title:
-            data?.vision_title ||
-            fallbackVisionMission.vision_title,
-
-          vision_text:
-            data?.vision_text ||
-            fallbackVisionMission.vision_text,
-
-          mission_title:
-            data?.mission_title ||
-            fallbackVisionMission.mission_title,
-
-          mission_text:
-            data?.mission_text ||
-            fallbackVisionMission.mission_text,
-
-          image:
-            data?.image ||
-            fallbackVisionMission.image,
-        });
-      } catch (err) {
-        console.error(
-          "VISION MISSION ERROR:",
-          err
-        );
-
-        setVisionMission(
-          fallbackVisionMission
-        );
-      }
-    },
-    [fallbackVisionMission]
-  );
-
-  /* =========================
-      INITIAL LOAD
+      LOAD DATA
   ========================= */
 
   useEffect(() => {
     const controller = new AbortController();
 
-    loadProfile(controller.signal);
-    loadHero(controller.signal);
-    loadAims(controller.signal);
-    loadVisionMission(controller.signal);
+    const loadData = async () => {
+      try {
+        /* PROFILE */
+        const profileRes = await fetch(
+          `${API_BASE}/api/homepage/profile`,
+          { signal: controller.signal }
+        );
+
+        if (profileRes.ok) {
+          const profileData =
+            await normalizeResponseData(profileRes);
+
+          setProfile({
+            title:
+              profileData?.title ||
+              fallbackProfile.title,
+
+            content:
+              profileData?.description ||
+              profileData?.content ||
+              fallbackProfile.content,
+          });
+        }
+
+        /* HERO */
+        const heroRes = await fetch(
+          `${API_BASE}/api/homepage/hero`,
+          { signal: controller.signal }
+        );
+
+        if (heroRes.ok) {
+          const heroData =
+            await normalizeResponseData(heroRes);
+
+          setHeroSlides(
+            Array.isArray(heroData)
+              ? heroData
+              : []
+          );
+        }
+
+        /* AIMS */
+        const aimsRes = await fetch(
+          `${API_BASE}/api/homepage/aims`,
+          { signal: controller.signal }
+        );
+
+        if (aimsRes.ok) {
+          const aimsData =
+            await normalizeResponseData(aimsRes);
+
+          setAims(
+            Array.isArray(aimsData)
+              ? aimsData
+              : []
+          );
+        }
+
+        /* VISION */
+        const vmRes = await fetch(
+          `${API_BASE}/api/homepage/vision-mission`,
+          { signal: controller.signal }
+        );
+
+        if (vmRes.ok) {
+          const vmData =
+            await normalizeResponseData(vmRes);
+
+          setVisionMission({
+            vision_title:
+              vmData?.vision_title ||
+              fallbackVisionMission.vision_title,
+
+            vision_text:
+              vmData?.vision_text ||
+              fallbackVisionMission.vision_text,
+
+            mission_title:
+              vmData?.mission_title ||
+              fallbackVisionMission.mission_title,
+
+            mission_text:
+              vmData?.mission_text ||
+              fallbackVisionMission.mission_text,
+
+            image:
+              vmData?.image ||
+              fallbackVisionMission.image,
+          });
+        }
+      } catch (err) {
+        console.error("HOMEPAGE ERROR:", err);
+      }
+    };
+
+    loadData();
 
     return () => controller.abort();
-  }, [
-    loadProfile,
-    loadHero,
-    loadAims,
-    loadVisionMission,
-  ]);
+  }, [fallbackProfile, fallbackVisionMission]);
 
   /* =========================
-      COMPUTED
+      HERO IMAGES
   ========================= */
 
   const heroImageUrls = useMemo(() => {
@@ -326,8 +268,8 @@ export default function HomePage() {
     return fallbackHeroImages;
   }, [
     heroSlides,
-    resolveImageUrl,
     fallbackHeroImages,
+    resolveImageUrl,
   ]);
 
   const aimsToRender = useMemo(() => {
@@ -337,11 +279,11 @@ export default function HomePage() {
   }, [aims, fallbackAims]);
 
   return (
-    <div className="min-h-screen bg-white overflow-x-hidden">
+    <div className="min-h-screen overflow-x-hidden bg-white">
       <Navbar />
 
       {/* HERO */}
-      <section className="relative w-full pt-20 pb-8 px-4 md:px-6">
+      <section className="pt-20 px-4 md:px-6">
         <div className="max-w-7xl mx-auto">
           <Swiper
             modules={[
@@ -351,11 +293,11 @@ export default function HomePage() {
               EffectFade,
             ]}
             effect="fade"
-            speed={1200}
             autoplay={{
               delay: 3000,
               disableOnInteraction: false,
             }}
+            speed={1200}
             pagination={{ clickable: true }}
             navigation
             className="rounded-3xl overflow-hidden shadow-2xl"
@@ -381,9 +323,9 @@ export default function HomePage() {
       {/* PROFILE */}
       <section
         id="profile"
-        className="max-w-6xl mx-auto px-6 py-16"
+        className="max-w-6xl mx-auto px-6 py-20"
       >
-        <h2 className="text-3xl font-bold mb-6 text-[#1E9C2D]">
+        <h2 className="text-3xl font-bold text-[#1E9C2D] mb-6">
           {profile.title}
         </h2>
 
@@ -395,10 +337,10 @@ export default function HomePage() {
       {/* AIMS */}
       <section
         id="aims"
-        className="bg-gray-50 py-16"
+        className="bg-gray-50 py-20"
       >
         <div className="max-w-6xl mx-auto px-6">
-          <h2 className="text-2xl font-bold text-[#1E9C2D] mb-10">
+          <h2 className="text-3xl font-bold text-[#1E9C2D] mb-10">
             CSERM'S AIMS
           </h2>
 
@@ -412,7 +354,7 @@ export default function HomePage() {
               return (
                 <div
                   key={item.id || index}
-                  className="bg-[#1E9C2D] text-white rounded-2xl overflow-hidden shadow-lg hover:scale-105 transition"
+                  className="bg-[#1E9C2D] rounded-2xl overflow-hidden shadow-lg text-white hover:scale-105 transition duration-300"
                 >
                   <img
                     src={imageSrc}
@@ -433,28 +375,32 @@ export default function HomePage() {
       {/* VISION */}
       <section
         id="vision"
-        className="max-w-6xl mx-auto px-6 py-16 grid md:grid-cols-2 gap-10 items-center"
+        className="max-w-6xl mx-auto px-6 py-20 grid md:grid-cols-2 gap-10 items-center"
       >
         <div>
-          <h2 className="text-2xl font-bold text-[#1E9C2D] mb-6">
+          <h2 className="text-3xl font-bold text-[#1E9C2D] mb-6">
             Vision & Mission
           </h2>
 
-          <h3 className="font-bold text-lg mb-2 text-[#1E9C2D]">
-            {visionMission.vision_title}
-          </h3>
+          <div className="mb-6">
+            <h3 className="font-bold text-xl mb-2 text-[#1E9C2D]">
+              {visionMission.vision_title}
+            </h3>
 
-          <p className="mb-6 whitespace-pre-line">
-            {visionMission.vision_text}
-          </p>
+            <p className="whitespace-pre-line text-gray-700">
+              {visionMission.vision_text}
+            </p>
+          </div>
 
-          <h3 className="font-bold text-lg mb-2 text-[#1E9C2D]">
-            {visionMission.mission_title}
-          </h3>
+          <div>
+            <h3 className="font-bold text-xl mb-2 text-[#1E9C2D]">
+              {visionMission.mission_title}
+            </h3>
 
-          <p className="whitespace-pre-line">
-            {visionMission.mission_text}
-          </p>
+            <p className="whitespace-pre-line text-gray-700">
+              {visionMission.mission_text}
+            </p>
+          </div>
         </div>
 
         <div>
@@ -466,13 +412,13 @@ export default function HomePage() {
                   )
                 : visionImage
             }
-            alt="vision"
-            className="rounded-2xl shadow-xl"
+            alt="Vision"
+            className="rounded-3xl shadow-xl w-full"
           />
         </div>
       </section>
 
-      {/* OTHER SECTION */}
+      {/* SECTIONS */}
       <section id="projects">
         <ProjectPage />
       </section>
@@ -494,7 +440,7 @@ export default function HomePage() {
       </section>
 
       {/* FOOTER */}
-      <footer className="bg-[#d9cbba] mt-20 pt-16 pb-10">
+      <footer className="bg-[#d9cbba] mt-20 py-16">
         <div className="max-w-6xl mx-auto px-6">
           <div className="grid md:grid-cols-4 gap-10">
             <div>
@@ -502,7 +448,7 @@ export default function HomePage() {
                 CSERM UNAS
               </h3>
 
-              <p className="text-sm">
+              <p className="text-sm text-black/80">
                 Centre for Sustainable Energy &
                 Resources Management.
               </p>
