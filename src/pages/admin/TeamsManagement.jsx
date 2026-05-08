@@ -1,4 +1,5 @@
 // src/pages/admin/TeamsManagement.jsx
+
 import { useEffect, useState, useCallback } from "react";
 import Swal from "sweetalert2";
 import {
@@ -8,8 +9,10 @@ import {
   deleteTeam,
 } from "../../services/teamService";
 
-const API_BASE_URL =
-  process.env.REACT_APP_API_URL || "http://localhost:5000";
+const API_BASE_URL = (
+  process.env.REACT_APP_API_URL ||
+  "https://resilient-balance-production-57f8.up.railway.app"
+).replace(/\/$/, "");
 
 export default function TeamsManagement() {
   const [teams, setTeams] = useState([]);
@@ -22,7 +25,7 @@ export default function TeamsManagement() {
     position: "",
     bio: "",
     category: "staff",
-    photo: null,
+    image: null,
   });
 
   const [fileKey, setFileKey] = useState(Date.now());
@@ -30,24 +33,29 @@ export default function TeamsManagement() {
   // ================= NORMALIZE CATEGORY =================
   const normalizeCategory = (c) => {
     const val = (c || "staff").toString().trim().toLowerCase();
+
     if (val === "management") return "management";
     if (val === "expert") return "expert";
+
     return "staff";
   };
 
-  // ================= LOAD DATA (FIX WARNING) =================
+  // ================= LOAD DATA =================
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
+
       const res = await getTeams();
 
-      const cleaned = (res.data || []).map((t) => ({
+      const cleaned = (Array.isArray(res.data) ? res.data : []).map((t) => ({
         ...t,
         category: normalizeCategory(t.category),
       }));
 
       setTeams(cleaned);
     } catch (err) {
+      console.error("LOAD TEAM ERROR:", err);
+
       Swal.fire(
         "Error",
         err.response?.data?.message || "Gagal ambil data team",
@@ -65,33 +73,39 @@ export default function TeamsManagement() {
   // ================= HANDLE INPUT =================
   const handleChange = (e) => {
     const { name, value, files } = e.target;
+
     setForm((prev) => ({
       ...prev,
       [name]: files ? files[0] : value,
     }));
   };
 
+  // ================= RESET FORM =================
   const resetForm = () => {
     setForm({
       name: "",
       position: "",
       bio: "",
       category: "staff",
-      photo: null,
+      image: null,
     });
+
     setEditId(null);
     setFileKey(Date.now());
   };
 
+  // ================= EDIT =================
   const handleEdit = (item) => {
     setEditId(item.id);
+
     setForm({
       name: item.name || "",
       position: item.position || "",
       bio: item.bio || "",
       category: normalizeCategory(item.category),
-      photo: null,
+      image: null,
     });
+
     setFileKey(Date.now());
   };
 
@@ -103,15 +117,19 @@ export default function TeamsManagement() {
       setSubmitting(true);
 
       const data = new FormData();
+
       data.append("name", form.name);
       data.append("position", form.position);
       data.append("bio", form.bio);
       data.append("category", normalizeCategory(form.category));
 
-      if (form.photo) data.append("photo", form.photo);
+      if (form.image) {
+        data.append("image", form.image);
+      }
 
       if (editId) {
         await updateTeam(editId, data);
+
         Swal.fire({
           icon: "success",
           title: "Updated",
@@ -121,6 +139,7 @@ export default function TeamsManagement() {
         });
       } else {
         await createTeam(data);
+
         Swal.fire({
           icon: "success",
           title: "Created",
@@ -133,6 +152,8 @@ export default function TeamsManagement() {
       resetForm();
       loadData();
     } catch (err) {
+      console.error("SAVE TEAM ERROR:", err);
+
       Swal.fire(
         "Error",
         err.response?.data?.message || "Gagal menyimpan team",
@@ -159,9 +180,13 @@ export default function TeamsManagement() {
 
     try {
       await deleteTeam(id);
+
       Swal.fire("Terhapus", "Team berhasil dihapus", "success");
+
       loadData();
     } catch (err) {
+      console.error("DELETE TEAM ERROR:", err);
+
       Swal.fire(
         "Error",
         err.response?.data?.message || "Gagal hapus team",
@@ -173,15 +198,29 @@ export default function TeamsManagement() {
   // ================= BADGE =================
   const badgeClass = (category) => {
     const c = normalizeCategory(category);
-    if (c === "management") return "bg-green-100 text-green-700";
-    if (c === "expert") return "bg-purple-100 text-purple-700";
+
+    if (c === "management") {
+      return "bg-green-100 text-green-700";
+    }
+
+    if (c === "expert") {
+      return "bg-purple-100 text-purple-700";
+    }
+
     return "bg-blue-100 text-blue-700";
   };
 
   const badgeText = (category) => {
     const c = normalizeCategory(category);
-    if (c === "management") return "Management";
-    if (c === "expert") return "Expert Associate";
+
+    if (c === "management") {
+      return "Management";
+    }
+
+    if (c === "expert") {
+      return "Expert Associate";
+    }
+
     return "Staff";
   };
 
@@ -190,6 +229,7 @@ export default function TeamsManagement() {
     <div className="max-w-4xl mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">Kelola Teams</h1>
 
+      {/* FORM */}
       <form onSubmit={handleSubmit} className="space-y-3 mb-6">
         <input
           name="name"
@@ -233,7 +273,7 @@ export default function TeamsManagement() {
         <input
           key={fileKey}
           type="file"
-          name="photo"
+          name="image"
           onChange={handleChange}
           accept="image/*"
         />
@@ -263,6 +303,7 @@ export default function TeamsManagement() {
         </div>
       </form>
 
+      {/* LIST */}
       {loading ? (
         <p>Loading...</p>
       ) : teams.length === 0 ? (
@@ -275,9 +316,9 @@ export default function TeamsManagement() {
           >
             <img
               src={
-                t.photo
-                  ? `${API_BASE_URL}/uploads/teams/${t.photo}`
-                  : "https://via.placeholder.com/80?text=No+Photo"
+                t.image
+                  ? `${API_BASE_URL}/uploads/teams/${t.image}`
+                  : "https://via.placeholder.com/80?text=No+Image"
               }
               alt={t.name}
               className="w-20 h-20 object-cover rounded-xl border"
@@ -286,6 +327,7 @@ export default function TeamsManagement() {
             <div className="flex-1">
               <div className="flex items-center gap-2">
                 <h3 className="font-semibold">{t.name}</h3>
+
                 <span
                   className={`text-xs px-2 py-1 rounded ${badgeClass(
                     t.category
@@ -296,6 +338,7 @@ export default function TeamsManagement() {
               </div>
 
               <p className="text-sm text-gray-600">{t.position}</p>
+
               {t.bio && (
                 <p className="text-sm text-gray-500 mt-1">{t.bio}</p>
               )}
@@ -307,6 +350,7 @@ export default function TeamsManagement() {
                 >
                   Edit
                 </button>
+
                 <button
                   onClick={() => handleDelete(t.id)}
                   className="text-red-600 text-sm"
