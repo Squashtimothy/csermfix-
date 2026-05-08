@@ -1,204 +1,213 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import logo from "../assets/logo.png";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
 
-  // =========================
-  // SMOOTH SCROLL
-  // =========================
-  const handleScroll = (id) => {
-    const section = document.getElementById(id);
-
-    if (section) {
-      section.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
+  // lock body scroll saat menu mobile buka
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
     }
 
-    setIsOpen(false);
-  };
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, [isOpen]);
+
+  // close menu saat resize desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setIsOpen(false);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    return () =>
+      window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const closeMenu = () => setIsOpen(false);
 
   return (
-    <nav className="fixed top-0 left-0 w-full z-50 backdrop-blur-md bg-white/80 shadow-md">
-      <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+    <>
+      <nav className="fixed top-0 left-0 w-full z-[999] bg-white shadow-md">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+          {/* LOGO */}
+          <div className="flex items-center gap-3">
+            <img
+              src={logo}
+              alt="CSERM Logo"
+              className="h-10 w-10 object-contain"
+            />
 
-        {/* ================= LOGO ================= */}
-        <div
-          onClick={() => handleScroll("hero")}
-          className="flex items-center gap-3 cursor-pointer"
-        >
-          <img
-            src={logo}
-            alt="CSERM Logo"
-            className="h-9 w-9 object-contain"
-          />
+            <span className="text-xl font-bold text-[#1E9C2D]">
+              CSERM UNAS
+            </span>
+          </div>
 
-          <span className="text-xl font-bold text-[#1E9C2D] tracking-wide">
-            CSERM UNAS
-          </span>
-        </div>
-
-        {/* ================= DESKTOP MENU ================= */}
-        <ul className="hidden md:flex gap-8 font-medium text-gray-700">
-          <li>
-            <button
-              onClick={() => handleScroll("profile")}
-              className="hover:text-[#1E9C2D] transition-colors"
-            >
-              Profile
-            </button>
-          </li>
-
-          <li>
-            <button
-              onClick={() => handleScroll("projects")}
-              className="hover:text-[#1E9C2D] transition-colors"
-            >
-              Project
-            </button>
-          </li>
-
-          <li>
-            <button
-              onClick={() => handleScroll("publications")}
-              className="hover:text-[#1E9C2D] transition-colors"
-            >
-              Publications
-            </button>
-          </li>
-
-          <li>
-            <button
-              onClick={() => handleScroll("ourteam")}
-              className="hover:text-[#1E9C2D] transition-colors"
-            >
-              CSERM Team
-            </button>
-          </li>
-
-          <li>
-            <button
-              onClick={() => handleScroll("news")}
-              className="hover:text-[#1E9C2D] transition-colors"
-            >
-              News
-            </button>
-          </li>
-
-          <li>
-            <button
-              onClick={() => handleScroll("contact")}
-              className="hover:text-[#1E9C2D] transition-colors"
-            >
-              Contact Us
-            </button>
-          </li>
-        </ul>
-
-        {/* ================= MOBILE BUTTON ================= */}
-        <button
-          type="button"
-          aria-label="Toggle Menu"
-          className="md:hidden relative w-8 h-8 flex items-center justify-center"
-          onClick={() => setIsOpen(!isOpen)}
-        >
-          {/* TOP */}
-          <span
-            className={`absolute h-0.5 w-6 bg-gray-800 rounded transition-all duration-300 ${
-              isOpen
-                ? "rotate-45"
-                : "-translate-y-2"
-            }`}
-          />
-
-          {/* MIDDLE */}
-          <span
-            className={`absolute h-0.5 w-6 bg-gray-800 rounded transition-all duration-300 ${
-              isOpen
-                ? "opacity-0"
-                : "opacity-100"
-            }`}
-          />
-
-          {/* BOTTOM */}
-          <span
-            className={`absolute h-0.5 w-6 bg-gray-800 rounded transition-all duration-300 ${
-              isOpen
-                ? "-rotate-45"
-                : "translate-y-2"
-            }`}
-          />
-        </button>
-      </div>
-
-      {/* ================= MOBILE MENU ================= */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3 }}
-            className="md:hidden overflow-hidden bg-white border-t border-gray-200 shadow-lg"
-          >
-            <div className="flex flex-col px-6 py-5 space-y-4 text-center">
-
-              <button
-                onClick={() => handleScroll("profile")}
-                className="text-gray-700 hover:text-[#1E9C2D] transition"
+          {/* DESKTOP MENU */}
+          <ul className="hidden md:flex items-center gap-8 font-medium text-gray-700">
+            <li>
+              <a
+                href="#profile"
+                className="hover:text-[#1E9C2D]"
               >
                 Profile
-              </button>
+              </a>
+            </li>
 
-              <button
-                onClick={() => handleScroll("projects")}
-                className="text-gray-700 hover:text-[#1E9C2D] transition"
+            <li>
+              <a
+                href="#projects"
+                className="hover:text-[#1E9C2D]"
               >
-                What We Do?
-              </button>
+                Project
+              </a>
+            </li>
 
-              <button
-                onClick={() => handleScroll("publications")}
-                className="text-gray-700 hover:text-[#1E9C2D] transition"
+            <li>
+              <a
+                href="#publications"
+                className="hover:text-[#1E9C2D]"
               >
                 Publications
-              </button>
+              </a>
+            </li>
 
-              <button
-                onClick={() => handleScroll("ourteam")}
-                className="text-gray-700 hover:text-[#1E9C2D] transition"
+            <li>
+              <a
+                href="#ourteam"
+                className="hover:text-[#1E9C2D]"
               >
-                Our Team
-              </button>
+                Team
+              </a>
+            </li>
 
-              <button
-                onClick={() => handleScroll("news")}
-                className="text-gray-700 hover:text-[#1E9C2D] transition"
+            <li>
+              <a
+                href="#news"
+                className="hover:text-[#1E9C2D]"
               >
                 News
-              </button>
+              </a>
+            </li>
 
-              <button
-                onClick={() => handleScroll("contact")}
-                className="text-gray-700 hover:text-[#1E9C2D] transition"
+            <li>
+              <a
+                href="#contact"
+                className="hover:text-[#1E9C2D]"
               >
-                Contact Us
-              </button>
+                Contact
+              </a>
+            </li>
+          </ul>
 
-              <button
-                onClick={() => handleScroll("info")}
-                className="block w-full px-4 py-2 rounded-full text-white font-medium shadow-md hover:opacity-90 transition"
-                style={{ backgroundColor: "#1E9C2D" }}
-              >
-                For Your Information
-              </button>
-            </div>
-          </motion.div>
+          {/* HAMBURGER */}
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="md:hidden relative w-8 h-8 flex items-center justify-center z-[1000]"
+          >
+            <span
+              className={`absolute w-6 h-[2px] bg-black transition-all duration-300 ${
+                isOpen
+                  ? "rotate-45"
+                  : "-translate-y-2"
+              }`}
+            />
+
+            <span
+              className={`absolute w-6 h-[2px] bg-black transition-all duration-300 ${
+                isOpen ? "opacity-0" : "opacity-100"
+              }`}
+            />
+
+            <span
+              className={`absolute w-6 h-[2px] bg-black transition-all duration-300 ${
+                isOpen
+                  ? "-rotate-45"
+                  : "translate-y-2"
+              }`}
+            />
+          </button>
+        </div>
+      </nav>
+
+      {/* MOBILE MENU */}
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            {/* BACKDROP */}
+            <motion.div
+              onClick={closeMenu}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 z-[998] md:hidden"
+            />
+
+            {/* MENU */}
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{
+                duration: 0.3,
+              }}
+              className="fixed top-0 right-0 w-[80%] h-screen bg-white z-[999] shadow-2xl md:hidden"
+            >
+              <div className="flex flex-col p-8 gap-6 mt-20 text-lg font-medium text-gray-700">
+                <a
+                  href="#profile"
+                  onClick={closeMenu}
+                >
+                  Profile
+                </a>
+
+                <a
+                  href="#projects"
+                  onClick={closeMenu}
+                >
+                  Projects
+                </a>
+
+                <a
+                  href="#publications"
+                  onClick={closeMenu}
+                >
+                  Publications
+                </a>
+
+                <a
+                  href="#ourteam"
+                  onClick={closeMenu}
+                >
+                  Team
+                </a>
+
+                <a
+                  href="#news"
+                  onClick={closeMenu}
+                >
+                  News
+                </a>
+
+                <a
+                  href="#contact"
+                  onClick={closeMenu}
+                >
+                  Contact
+                </a>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
-    </nav>
+    </>
   );
 }
