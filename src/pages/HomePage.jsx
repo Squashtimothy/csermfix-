@@ -1,17 +1,8 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-  useCallback,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import Navbar from "../components/navbar";
 
-import {
-  Instagram,
-  Facebook,
-  Youtube,
-} from "lucide-react";
+import { Instagram, Facebook, Youtube } from "lucide-react";
 
 import hero1 from "../assets/herobaru.jpg";
 import hero2 from "../assets/heroslider2.jpg";
@@ -47,24 +38,28 @@ import "swiper/css/pagination";
 import "swiper/css/navigation";
 import "swiper/css/effect-fade";
 
-import {
-  getHeroPublic,
-  getAimsPublic,
-  getHomepageProfile,
-  getVisionMission,
-  resolveImage,
-} from "../services/homepageService";
+const API_BASE = (
+  process.env.REACT_APP_API_URL ||
+  "https://resilient-balance-production-57f8.up.railway.app"
+).replace(/\/$/, "");
+
+const normalizeResponseData = async (res) => {
+  const data = await res.json();
+
+  if (data?.data !== undefined) {
+    return data.data;
+  }
+
+  return data;
+};
 
 export default function HomePage() {
+  /* =========================
+      FALLBACK DATA
+  ========================= */
+
   const fallbackHeroImages = useMemo(
-    () => [
-      hero1,
-      hero2,
-      hero3,
-      hero4,
-      hero5,
-      hero6,
-    ],
+    () => [hero1, hero2, hero3, hero4, hero5, hero6],
     []
   );
 
@@ -85,7 +80,6 @@ export default function HomePage() {
         id: 1,
         content:
           "Identifying and assessing renewable energy resources.",
-
         image: aim1,
       },
 
@@ -93,7 +87,6 @@ export default function HomePage() {
         id: 2,
         content:
           "Collaborating with Academic, Business, Government, and Civil Society.",
-
         image: aim2,
       },
 
@@ -101,7 +94,6 @@ export default function HomePage() {
         id: 3,
         content:
           "Training local communities and industry professionals.",
-
         image: aim3,
       },
     ],
@@ -113,148 +105,243 @@ export default function HomePage() {
       vision_title: "Vision",
 
       vision_text:
-        "To become a leading centre in sustainable energy.",
+        "To become a leading centre in sustainable energy and resources management.",
 
       mission_title: "Mission",
 
       mission_text:
-        "Developing research and empowering communities.",
+        "Developing research, strengthening partnerships, and empowering local communities.",
 
       image: null,
     }),
     []
   );
 
+  /* =========================
+      STATES
+  ========================= */
+
   const [profile, setProfile] =
     useState(fallbackProfile);
 
-  const [heroSlides, setHeroSlides] =
-    useState([]);
+  const [heroSlides, setHeroSlides] = useState([]);
 
   const [aims, setAims] = useState([]);
 
   const [visionMission, setVisionMission] =
     useState(fallbackVisionMission);
 
-  const loadHomepage = useCallback(async () => {
+  /* =========================
+      IMAGE URL
+  ========================= */
+
+  const resolveImageUrl = useCallback((image) => {
+    if (!image) return "";
+
+    if (/^https?:\/\//i.test(image)) {
+      return image;
+    }
+
+    return `${API_BASE}/uploads/${image}`;
+  }, []);
+
+  /* =========================
+      LOAD PROFILE
+  ========================= */
+
+  const loadProfile = useCallback(async (signal) => {
     try {
-      const [
-        heroRes,
-        aimsRes,
-        profileRes,
-        visionMissionRes,
-      ] = await Promise.all([
-        getHeroPublic(),
-        getAimsPublic(),
-        getHomepageProfile(),
-        getVisionMission(),
-      ]);
+      const res = await fetch(
+        `${API_BASE}/api/homepage/profile`,
+        { signal }
+      );
 
-      // HERO
-      const heroData = Array.isArray(
-        heroRes?.data
-      )
-        ? heroRes.data
-        : heroRes?.data?.data || [];
+      if (!res.ok) {
+        throw new Error("Failed fetch profile");
+      }
 
-      setHeroSlides(heroData);
-
-      // AIMS
-      const aimsData = Array.isArray(
-        aimsRes?.data
-      )
-        ? aimsRes.data
-        : aimsRes?.data?.data || [];
-
-      setAims(aimsData);
-
-      // PROFILE
-      const profileData =
-        profileRes?.data?.data ||
-        profileRes?.data ||
-        {};
+      const data =
+        await normalizeResponseData(res);
 
       setProfile({
         title:
-          profileData?.title ||
+          data?.title ||
           fallbackProfile.title,
 
         content:
-          profileData?.description ||
-          profileData?.content ||
+          data?.description ||
+          data?.content ||
           fallbackProfile.content,
       });
-
-      // VISION MISSION
-      const vmData =
-        visionMissionRes?.data?.data ||
-        visionMissionRes?.data ||
-        {};
-
-      setVisionMission({
-        vision_title:
-          vmData?.vision_title ||
-          fallbackVisionMission.vision_title,
-
-        vision_text:
-          vmData?.vision_text ||
-          fallbackVisionMission.vision_text,
-
-        mission_title:
-          vmData?.mission_title ||
-          fallbackVisionMission.mission_title,
-
-        mission_text:
-          vmData?.mission_text ||
-          fallbackVisionMission.mission_text,
-
-        image: vmData?.image || null,
-      });
     } catch (err) {
-      console.error(
-        "HOMEPAGE ERROR:",
-        err
-      );
-
-      setHeroSlides([]);
-
-      setAims([]);
+      console.error("PROFILE ERROR:", err);
 
       setProfile(fallbackProfile);
-
-      setVisionMission(
-        fallbackVisionMission
-      );
     }
-  }, [
-    fallbackProfile,
-    fallbackVisionMission,
-  ]);
+  }, [fallbackProfile]);
+
+  /* =========================
+      LOAD HERO
+  ========================= */
+
+  const loadHero = useCallback(async (signal) => {
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/homepage/hero`,
+        { signal }
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed fetch hero");
+      }
+
+      const data =
+        await normalizeResponseData(res);
+
+      setHeroSlides(
+        Array.isArray(data) ? data : []
+      );
+    } catch (err) {
+      console.error("HERO ERROR:", err);
+
+      setHeroSlides([]);
+    }
+  }, []);
+
+  /* =========================
+      LOAD AIMS
+  ========================= */
+
+  const loadAims = useCallback(async (signal) => {
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/homepage/aims`,
+        { signal }
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed fetch aims");
+      }
+
+      const data =
+        await normalizeResponseData(res);
+
+      setAims(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("AIMS ERROR:", err);
+
+      setAims([]);
+    }
+  }, []);
+
+  /* =========================
+      LOAD VISION MISSION
+  ========================= */
+
+  const loadVisionMission = useCallback(
+    async (signal) => {
+      try {
+        const res = await fetch(
+          `${API_BASE}/api/homepage/vision-mission`,
+          { signal }
+        );
+
+        if (!res.ok) {
+          throw new Error(
+            "Failed fetch vision mission"
+          );
+        }
+
+        const data =
+          await normalizeResponseData(res);
+
+        setVisionMission({
+          vision_title:
+            data?.vision_title ||
+            fallbackVisionMission.vision_title,
+
+          vision_text:
+            data?.vision_text ||
+            fallbackVisionMission.vision_text,
+
+          mission_title:
+            data?.mission_title ||
+            fallbackVisionMission.mission_title,
+
+          mission_text:
+            data?.mission_text ||
+            fallbackVisionMission.mission_text,
+
+          image:
+            data?.image ||
+            fallbackVisionMission.image,
+        });
+      } catch (err) {
+        console.error(
+          "VISION MISSION ERROR:",
+          err
+        );
+
+        setVisionMission(
+          fallbackVisionMission
+        );
+      }
+    },
+    [fallbackVisionMission]
+  );
+
+  /* =========================
+      INITIAL LOAD
+  ========================= */
 
   useEffect(() => {
-    loadHomepage();
-  }, [loadHomepage]);
+    const controller = new AbortController();
 
-  const heroImageUrls =
-    heroSlides.length > 0
-      ? heroSlides
-          .map((item) =>
-            resolveImage(item?.image)
-          )
-          .filter(Boolean)
-      : fallbackHeroImages;
+    loadProfile(controller.signal);
+    loadHero(controller.signal);
+    loadAims(controller.signal);
+    loadVisionMission(controller.signal);
 
-  const aimsToRender =
-    aims.length > 0
+    return () => controller.abort();
+  }, [
+    loadProfile,
+    loadHero,
+    loadAims,
+    loadVisionMission,
+  ]);
+
+  /* =========================
+      COMPUTED
+  ========================= */
+
+  const heroImageUrls = useMemo(() => {
+    if (heroSlides.length > 0) {
+      return heroSlides
+        .map((item) =>
+          resolveImageUrl(item?.image)
+        )
+        .filter(Boolean);
+    }
+
+    return fallbackHeroImages;
+  }, [
+    heroSlides,
+    resolveImageUrl,
+    fallbackHeroImages,
+  ]);
+
+  const aimsToRender = useMemo(() => {
+    return aims.length > 0
       ? aims
       : fallbackAims;
+  }, [aims, fallbackAims]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen bg-white overflow-x-hidden">
       <Navbar />
 
       {/* HERO */}
-      <section className="relative w-full pt-20 pb-8 px-6">
+      <section className="relative w-full pt-20 pb-8 px-4 md:px-6">
         <div className="max-w-7xl mx-auto">
           <Swiper
             modules={[
@@ -264,127 +351,109 @@ export default function HomePage() {
               EffectFade,
             ]}
             effect="fade"
-            speed={2000}
+            speed={1200}
             autoplay={{
               delay: 3000,
               disableOnInteraction: false,
             }}
-            pagination={{
-              clickable: true,
-            }}
+            pagination={{ clickable: true }}
             navigation
-            className="rounded-3xl shadow-2xl overflow-hidden"
+            className="rounded-3xl overflow-hidden shadow-2xl"
           >
-            {heroImageUrls.map(
-              (img, index) => (
-                <SwiperSlide key={index}>
-                  <div className="relative w-full h-[70vh]">
-                    <img
-                      src={img}
-                      alt="Hero"
-                      className="w-full h-full object-cover"
-                    />
+            {heroImageUrls.map((img, index) => (
+              <SwiperSlide key={index}>
+                <div className="relative h-[45vh] md:h-[70vh]">
+                  <div
+                    className="absolute inset-0 bg-cover bg-center"
+                    style={{
+                      backgroundImage: `url(${img})`,
+                    }}
+                  />
 
-                    {heroSlides[index]
-                      ?.caption && (
-                      <div className="absolute bottom-6 left-6 text-white">
-                        <div className="bg-black/40 px-4 py-2 rounded-xl">
-                          {
-                            heroSlides[
-                              index
-                            ].caption
-                          }
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </SwiperSlide>
-              )
-            )}
+                  <div className="absolute inset-0 bg-black/30" />
+                </div>
+              </SwiperSlide>
+            ))}
           </Swiper>
         </div>
       </section>
 
       {/* PROFILE */}
-      <section className="max-w-6xl mx-auto px-6 py-16">
-        <h2 className="text-3xl font-bold text-[#1E9C2D] mb-6">
+      <section
+        id="profile"
+        className="max-w-6xl mx-auto px-6 py-16"
+      >
+        <h2 className="text-3xl font-bold mb-6 text-[#1E9C2D]">
           {profile.title}
         </h2>
 
-        <p className="text-gray-700 whitespace-pre-line">
+        <p className="text-gray-700 leading-relaxed whitespace-pre-line text-justify">
           {profile.content}
         </p>
       </section>
 
       {/* AIMS */}
-      <section className="bg-gray-50 py-16">
+      <section
+        id="aims"
+        className="bg-gray-50 py-16"
+      >
         <div className="max-w-6xl mx-auto px-6">
           <h2 className="text-2xl font-bold text-[#1E9C2D] mb-10">
             CSERM'S AIMS
           </h2>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {aimsToRender.map(
-              (item, index) => (
+            {aimsToRender.map((item, index) => {
+              const imageSrc =
+                aims.length > 0
+                  ? resolveImageUrl(item.image)
+                  : item.image;
+
+              return (
                 <div
-                  key={
-                    item.id || index
-                  }
-                  className="bg-[#1E9C2D] text-white rounded-xl overflow-hidden"
+                  key={item.id || index}
+                  className="bg-[#1E9C2D] text-white rounded-2xl overflow-hidden shadow-lg hover:scale-105 transition"
                 >
                   <img
-                    src={
-                      aims.length > 0
-                        ? resolveImage(
-                            item.image
-                          )
-                        : item.image
-                    }
-                    alt="Aim"
+                    src={imageSrc}
+                    alt="aim"
                     className="w-full h-64 object-cover"
                   />
 
                   <div className="p-5">
-                    <p>
-                      {item.content}
-                    </p>
+                    <p>{item.content}</p>
                   </div>
                 </div>
-              )
-            )}
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* VISION MISSION */}
-      <section className="max-w-6xl mx-auto px-6 py-16 grid md:grid-cols-2 gap-10">
+      {/* VISION */}
+      <section
+        id="vision"
+        className="max-w-6xl mx-auto px-6 py-16 grid md:grid-cols-2 gap-10 items-center"
+      >
         <div>
           <h2 className="text-2xl font-bold text-[#1E9C2D] mb-6">
             Vision & Mission
           </h2>
 
-          <h3 className="font-bold mb-2">
-            {
-              visionMission.vision_title
-            }
+          <h3 className="font-bold text-lg mb-2 text-[#1E9C2D]">
+            {visionMission.vision_title}
           </h3>
 
           <p className="mb-6 whitespace-pre-line">
-            {
-              visionMission.vision_text
-            }
+            {visionMission.vision_text}
           </p>
 
-          <h3 className="font-bold mb-2">
-            {
-              visionMission.mission_title
-            }
+          <h3 className="font-bold text-lg mb-2 text-[#1E9C2D]">
+            {visionMission.mission_title}
           </h3>
 
           <p className="whitespace-pre-line">
-            {
-              visionMission.mission_text
-            }
+            {visionMission.mission_text}
           </p>
         </div>
 
@@ -392,68 +461,98 @@ export default function HomePage() {
           <img
             src={
               visionMission.image
-                ? resolveImage(
+                ? resolveImageUrl(
                     visionMission.image
                   )
                 : visionImage
             }
-            alt="Vision"
-            className="rounded-xl shadow-lg w-full"
+            alt="vision"
+            className="rounded-2xl shadow-xl"
           />
         </div>
       </section>
 
-      {/* OTHER SECTIONS */}
-      <ProjectPage />
+      {/* OTHER SECTION */}
+      <section id="projects">
+        <ProjectPage />
+      </section>
 
-      <PublicationPage />
+      <section id="publications">
+        <PublicationPage />
+      </section>
 
-      <OurTeamPage />
+      <section id="ourteam">
+        <OurTeamPage />
+      </section>
 
-      <NewsPage />
+      <section id="news">
+        <NewsPage />
+      </section>
 
-      <ContactUsPage />
+      <section id="contact">
+        <ContactUsPage />
+      </section>
 
       {/* FOOTER */}
-      <footer className="bg-[#d9cbba] mt-16 py-10">
-        <div className="max-w-6xl mx-auto px-6 text-center">
-          <img
-            src={partnerLogos}
-            alt="Partners"
-            className="mx-auto mb-8"
-          />
+      <footer className="bg-[#d9cbba] mt-20 pt-16 pb-10">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="grid md:grid-cols-4 gap-10">
+            <div>
+              <h3 className="font-bold text-[#1E9C2D] mb-3">
+                CSERM UNAS
+              </h3>
 
-          <div className="flex justify-center gap-4 mb-6">
-            <a
-              href="https://www.instagram.com/cserm_unas/"
-              target="_blank"
-              rel="noreferrer"
-            >
-              <Instagram />
-            </a>
+              <p className="text-sm">
+                Centre for Sustainable Energy &
+                Resources Management.
+              </p>
+            </div>
 
-            <a
-              href="https://www.youtube.com/@csermunas2204"
-              target="_blank"
-              rel="noreferrer"
-            >
-              <Youtube />
-            </a>
+            <div>
+              <h3 className="font-bold text-[#1E9C2D] mb-3">
+                Follow Us
+              </h3>
 
-            <a
-              href="https://www.facebook.com/cserm.unas.1/"
-              target="_blank"
-              rel="noreferrer"
-            >
-              <Facebook />
-            </a>
+              <div className="flex gap-4">
+                <a
+                  href="https://www.instagram.com/cserm_unas/"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Instagram />
+                </a>
+
+                <a
+                  href="https://www.youtube.com/@csermunas2204"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Youtube />
+                </a>
+
+                <a
+                  href="https://www.facebook.com/cserm.unas.1/"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Facebook />
+                </a>
+              </div>
+            </div>
           </div>
 
-          <p>
-            ©{" "}
-            {new Date().getFullYear()}{" "}
-            CSERM Universitas Nasional
-          </p>
+          <div className="mt-14 flex justify-center">
+            <img
+              src={partnerLogos}
+              alt="partners"
+              className="max-w-4xl w-full"
+            />
+          </div>
+
+          <div className="border-t border-black/20 mt-10 pt-6 text-center text-sm">
+            © {new Date().getFullYear()} CSERM
+            Universitas Nasional
+          </div>
         </div>
       </footer>
     </div>
