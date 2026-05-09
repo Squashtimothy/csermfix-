@@ -454,6 +454,46 @@ export default function HomePage() {
               </p>
             </div>
 
+            {/* QUICK LINKS */}
+             <div>
+        <h3 className="font-bold text-lg mb-3 text-[#1E9C2D]">
+          Quick Links
+        </h3>
+
+        <ul className="space-y-2">
+          <li>
+            <a href="#profile" className="hover:text-[#1E9C2D] transition">
+              Profile
+            </a>
+          </li>
+          <li>
+            <a href="#projects" className="hover:text-[#1E9C2D] transition">
+              Projects
+            </a>
+          </li>
+          <li>
+            <a href="#publications" className="hover:text-[#1E9C2D] transition">
+              Publications
+            </a>
+          </li>
+          <li>
+            <a href="#ourteam" className="hover:text-[#1E9C2D] transition">
+             CSERM Team
+            </a>
+          </li>
+          <li>
+            <a href="#news" className="hover:text-[#1E9C2D] transition">
+             news
+            </a>
+          </li>
+          <li>
+            <a href="#contact" className="hover:text-[#1E9C2D] transition">
+              Contact
+            </a>
+          </li>
+        </ul>
+      </div>
+
             <div>
               <h3 className="font-bold text-[#1E9C2D] mb-3">
                 Follow Us
