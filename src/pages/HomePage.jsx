@@ -548,13 +548,22 @@ export default function HomePage() {
 
           </div>
 
-          <div className="mt-14 flex justify-center">
-            <img
-              src={partnerLogos}
-              alt="partners"
-              className="max-w-4xl w-full"
-            />
-          </div>
+          {/* PARTNERS */}
+    <div className="mt-14">
+
+      <h3 className="text-center font-bold text-[#1E9C2D] mb-6">
+        Our Partners
+      </h3>
+
+      <div className="flex justify-center">
+        <img
+          src={partnerLogos}
+          alt="Partner Logos"
+          className="max-w-4xl w-full object-contain opacity-90 hover:opacity-100 transition"
+        />
+      </div>
+
+    </div>
 
           <div className="border-t border-black/20 mt-10 pt-6 text-center text-sm">
             © {new Date().getFullYear()} CSERM
