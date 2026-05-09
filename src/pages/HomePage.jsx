@@ -449,8 +449,9 @@ export default function HomePage() {
               </h3>
 
               <p className="text-sm text-black/80">
-                Centre for Sustainable Energy &
-                Resources Management.
+                Centre for Sustainable Energy & Resources Management focuses on
+                sustainable development, renewable energy innovation, and
+                community empowerment across Indonesia.
               </p>
             </div>
 
@@ -493,38 +494,58 @@ export default function HomePage() {
           </li>
         </ul>
       </div>
+       {/* CONTACT */}
+      <div>
+        <h3 className="font-bold text-lg mb-3 text-[#1E9C2D]">
+          Contact
+        </h3>
 
-            <div>
-              <h3 className="font-bold text-[#1E9C2D] mb-3">
-                Follow Us
-              </h3>
+        <ul className="space-y-2 text-black/80">
+          <li>Jl. Sawo Manila No.61, RT.14/RW.7, Pejaten Bar. Ps. Minggu, Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12520</li>
+          <li>Email: cserm@unas.ac.id</li>
+        </ul>
+      </div>
 
-              <div className="flex gap-4">
-                <a
-                  href="https://www.instagram.com/cserm_unas/"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <Instagram />
-                </a>
+      <div>
+        <h3 className="font-bold text-lg mb-3 text-[#1E9C2D]">
+          Follow Us
+        </h3>
 
-                <a
-                  href="https://www.youtube.com/@csermunas2204"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <Youtube />
-                </a>
+        <div className="flex gap-4 mt-3">
 
-                <a
-                  href="https://www.facebook.com/cserm.unas.1/"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <Facebook />
-                </a>
-              </div>
-            </div>
+          {/* Instagram */}
+          <a
+            href="https://www.instagram.com/cserm_unas/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white shadow hover:bg-[#E1306C] hover:text-white transition"
+          >
+            <Instagram size={18} />
+          </a>
+
+          {/* YouTube */}
+          <a
+            href="https://www.youtube.com/@csermunas2204"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white shadow hover:bg-red-600 hover:text-white transition"
+          >
+            <Youtube size={18} />
+          </a>
+
+          {/* Facebook */}
+          <a
+            href="https://www.facebook.com/cserm.unas.1/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white shadow hover:bg-blue-600 hover:text-white transition"
+          >
+            <Facebook size={18} />
+          </a>
+
+        </div>
+      </div>
+
           </div>
 
           <div className="mt-14 flex justify-center">
