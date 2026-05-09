@@ -2,10 +2,8 @@ import { useEffect, useState, useCallback } from "react";
 import Swal from "sweetalert2";
 import axios from "axios";
 
-const API_BASE_URL = (
-  process.env.REACT_APP_API_URL ||
-  "https://resilient-balance-production-57f8.up.railway.app"
-).replace(/\/$/, "");
+const API_BASE_URL =
+  "https://resilient-balance-production-57f8.up.railway.app";
 
 export default function TeamsManagement() {
   const [teams, setTeams] = useState([]);
@@ -23,61 +21,82 @@ export default function TeamsManagement() {
 
   const [fileKey, setFileKey] = useState(Date.now());
 
-  // ================= CATEGORY =================
-  const normalizeCategory = (c) => {
-    const val = (c || "staff")
+  /* =========================
+      CATEGORY
+  ========================= */
+
+  const normalizeCategory = (value) => {
+    const category = (value || "staff")
       .toString()
       .trim()
       .toLowerCase();
 
-    if (val === "management") return "management";
-    if (val === "expert") return "expert";
+    if (category === "management") {
+      return "management";
+    }
+
+    if (category === "expert") {
+      return "expert";
+    }
 
     return "staff";
   };
 
-  // ================= AUTH HEADER =================
-  const getAuthHeaders = (isMultipart = false) => {
-    const token = localStorage.getItem("token");
+  /* =========================
+      AUTH
+  ========================= */
 
-    return {
-      Authorization: `Bearer ${token}`,
-      ...(isMultipart && {
-        "Content-Type": "multipart/form-data",
-      }),
-    };
+  const getToken = () => {
+    return localStorage.getItem("token");
   };
 
-  // ================= LOAD DATA =================
+  /* =========================
+      IMAGE URL
+  ========================= */
+
+  const getImageUrl = (photo) => {
+    if (!photo) {
+      return "https://via.placeholder.com/100x100?text=No+Image";
+    }
+
+    if (photo.startsWith("http")) {
+      return photo;
+    }
+
+    return `${API_BASE_URL}/uploads/${photo}`;
+  };
+
+  /* =========================
+      LOAD DATA
+  ========================= */
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
 
-      const res = await axios.get(
+      const response = await axios.get(
         `${API_BASE_URL}/api/teams`
       );
 
-      console.log("TEAM RESPONSE:", res.data);
+      console.log("TEAM RESPONSE:", response.data);
 
-      const rawData = Array.isArray(res.data)
-        ? res.data
-        : Array.isArray(res.data?.data)
-        ? res.data.data
+      const data = Array.isArray(response.data)
+        ? response.data
         : [];
 
-      const cleaned = rawData.map((t) => ({
-        ...t,
-        category: normalizeCategory(t.category),
+      const cleanedData = data.map((item) => ({
+        ...item,
+        category: normalizeCategory(item.category),
       }));
 
-      setTeams(cleaned);
-    } catch (err) {
-      console.error("LOAD TEAM ERROR:", err);
+      setTeams(cleanedData);
+    } catch (error) {
+      console.error("LOAD TEAM ERROR:", error);
 
       Swal.fire(
         "Error",
-        err.response?.data?.message ||
-          "Gagal ambil data team",
+        error?.response?.data?.message ||
+          "Gagal mengambil data teams",
         "error"
       );
     } finally {
@@ -89,7 +108,10 @@ export default function TeamsManagement() {
     loadData();
   }, [loadData]);
 
-  // ================= HANDLE INPUT =================
+  /* =========================
+      INPUT
+  ========================= */
+
   const handleChange = (e) => {
     const { name, value, files } = e.target;
 
@@ -99,7 +121,10 @@ export default function TeamsManagement() {
     }));
   };
 
-  // ================= RESET =================
+  /* =========================
+      RESET
+  ========================= */
+
   const resetForm = () => {
     setForm({
       name: "",
@@ -113,73 +138,95 @@ export default function TeamsManagement() {
     setFileKey(Date.now());
   };
 
-  // ================= EDIT =================
-  const handleEdit = (item) => {
-    setEditId(item.id);
+  /* =========================
+      EDIT
+  ========================= */
+
+  const handleEdit = (team) => {
+    setEditId(team.id);
 
     setForm({
-      name: item.name || "",
-      position: item.position || "",
-      bio: item.bio || "",
-      category: normalizeCategory(item.category),
+      name: team.name || "",
+      position: team.position || "",
+      bio: team.bio || "",
+      category: normalizeCategory(team.category),
       photo: null,
     });
 
-    setFileKey(Date.now());
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   };
 
-  // ================= SUBMIT =================
+  /* =========================
+      SUBMIT
+  ========================= */
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const token = getToken();
+
+    if (!token) {
+      return Swal.fire(
+        "Unauthorized",
+        "Silakan login ulang",
+        "warning"
+      );
+    }
 
     try {
       setSubmitting(true);
 
-      const data = new FormData();
+      const formData = new FormData();
 
-      data.append("name", form.name);
-      data.append("position", form.position);
-      data.append("bio", form.bio);
+      formData.append("name", form.name);
+      formData.append("position", form.position);
+      formData.append("bio", form.bio || "");
 
-      data.append(
+      formData.append(
         "category",
         normalizeCategory(form.category)
       );
 
       if (form.photo) {
-        data.append("photo", form.photo);
+        formData.append("photo", form.photo);
       }
+
+      const config = {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      };
 
       if (editId) {
         await axios.put(
           `${API_BASE_URL}/api/teams/${editId}`,
-          data,
-          {
-            headers: getAuthHeaders(true),
-          }
+          formData,
+          config
         );
 
         Swal.fire({
           icon: "success",
-          title: "Updated",
+          title: "Berhasil",
           text: "Team berhasil diupdate",
-          timer: 1400,
+          timer: 1500,
           showConfirmButton: false,
         });
       } else {
         await axios.post(
           `${API_BASE_URL}/api/teams`,
-          data,
-          {
-            headers: getAuthHeaders(true),
-          }
+          formData,
+          config
         );
 
         Swal.fire({
           icon: "success",
-          title: "Created",
+          title: "Berhasil",
           text: "Team berhasil ditambahkan",
-          timer: 1400,
+          timer: 1500,
           showConfirmButton: false,
         });
       }
@@ -187,12 +234,12 @@ export default function TeamsManagement() {
       resetForm();
 
       await loadData();
-    } catch (err) {
-      console.error("SAVE TEAM ERROR:", err);
+    } catch (error) {
+      console.error("SAVE TEAM ERROR:", error);
 
       Swal.fire(
         "Error",
-        err.response?.data?.message ||
+        error?.response?.data?.message ||
           "Gagal menyimpan team",
         "error"
       );
@@ -201,48 +248,60 @@ export default function TeamsManagement() {
     }
   };
 
-  // ================= DELETE =================
+  /* =========================
+      DELETE
+  ========================= */
+
   const handleDelete = async (id) => {
+    const token = getToken();
+
     const result = await Swal.fire({
-      title: "Hapus team?",
+      title: "Hapus Team?",
       text: "Data akan dihapus permanen",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Ya, hapus",
-      cancelButtonText: "Batal",
       confirmButtonColor: "#d33",
+      confirmButtonText: "Ya",
+      cancelButtonText: "Batal",
     });
 
-    if (!result.isConfirmed) return;
+    if (!result.isConfirmed) {
+      return;
+    }
 
     try {
       await axios.delete(
         `${API_BASE_URL}/api/teams/${id}`,
         {
-          headers: getAuthHeaders(),
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 
       Swal.fire(
-        "Terhapus",
+        "Berhasil",
         "Team berhasil dihapus",
         "success"
       );
 
       await loadData();
-    } catch (err) {
-      console.error("DELETE TEAM ERROR:", err);
+    } catch (error) {
+      console.error("DELETE TEAM ERROR:", error);
 
       Swal.fire(
         "Error",
-        err.response?.data?.message ||
-          "Gagal hapus team",
+        error?.response?.data?.message ||
+          "Gagal menghapus team",
         "error"
       );
     }
   };
 
-  // ================= BADGE =================
+  /* =========================
+      BADGE
+  ========================= */
+
   const badgeClass = (category) => {
     const c = normalizeCategory(category);
 
@@ -271,24 +330,29 @@ export default function TeamsManagement() {
     return "Staff";
   };
 
-  // ================= RENDER =================
+  /* =========================
+      UI
+  ========================= */
+
   return (
-    <div className="max-w-4xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">
+    <div className="max-w-5xl mx-auto p-4 md:p-6">
+      <h1 className="text-3xl font-bold mb-6">
         Kelola Teams
       </h1>
 
       {/* FORM */}
+
       <form
         onSubmit={handleSubmit}
-        className="space-y-3 mb-6"
+        className="bg-white shadow rounded-2xl p-5 space-y-4 mb-8"
       >
         <input
+          type="text"
           name="name"
           value={form.name}
           onChange={handleChange}
           placeholder="Nama"
-          className="w-full border p-2 rounded"
+          className="w-full border rounded-lg p-3"
           required
         />
 
@@ -296,15 +360,14 @@ export default function TeamsManagement() {
           name="category"
           value={form.category}
           onChange={handleChange}
-          className="w-full border p-2 rounded"
-          required
+          className="w-full border rounded-lg p-3"
         >
           <option value="management">
             CSERM MANAGEMENT
           </option>
 
           <option value="expert">
-            CSERM Expert Associate
+            CSERM EXPERT ASSOCIATE
           </option>
 
           <option value="staff">
@@ -313,11 +376,12 @@ export default function TeamsManagement() {
         </select>
 
         <input
+          type="text"
           name="position"
           value={form.position}
           onChange={handleChange}
-          placeholder="Posisi/Jabatan"
-          className="w-full border p-2 rounded"
+          placeholder="Posisi / Jabatan"
+          className="w-full border rounded-lg p-3"
           required
         />
 
@@ -325,9 +389,9 @@ export default function TeamsManagement() {
           name="bio"
           value={form.bio}
           onChange={handleChange}
-          placeholder="Bio (opsional)"
-          className="w-full border p-2 rounded"
+          placeholder="Bio"
           rows={4}
+          className="w-full border rounded-lg p-3"
         />
 
         <input
@@ -336,13 +400,14 @@ export default function TeamsManagement() {
           name="photo"
           onChange={handleChange}
           accept="image/*"
+          className="w-full"
         />
 
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <button
             type="submit"
             disabled={submitting}
-            className="bg-blue-600 text-white px-4 py-2 rounded"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg"
           >
             {submitting
               ? "Menyimpan..."
@@ -355,7 +420,7 @@ export default function TeamsManagement() {
             <button
               type="button"
               onClick={resetForm}
-              className="bg-gray-400 text-white px-4 py-2 rounded"
+              className="bg-gray-500 hover:bg-gray-600 text-white px-5 py-3 rounded-lg"
             >
               Batal
             </button>
@@ -364,71 +429,74 @@ export default function TeamsManagement() {
       </form>
 
       {/* LIST */}
+
       {loading ? (
-        <p>Loading...</p>
+        <div className="text-center py-10">
+          Loading...
+        </div>
       ) : teams.length === 0 ? (
-        <p className="text-gray-500">
+        <div className="text-center text-gray-500 py-10">
           Belum ada data team
-        </p>
+        </div>
       ) : (
-        teams.map((t) => (
-          <div
-            key={t.id}
-            className="bg-white p-4 rounded shadow mb-3 flex items-start gap-4"
-          >
-            <img
-              src={
-                t.photo
-                  ? `${API_BASE_URL}/uploads/teams/${t.photo}`
-                  : "https://via.placeholder.com/80?text=No+Photo"
-              }
-              alt={t.name}
-              className="w-20 h-20 object-cover rounded-xl border"
-            />
+        <div className="space-y-4">
+          {teams.map((team) => (
+            <div
+              key={team.id}
+              className="bg-white rounded-2xl shadow p-4 flex flex-col md:flex-row gap-4"
+            >
+              <img
+                src={getImageUrl(team.photo)}
+                alt={team.name}
+                className="w-24 h-24 object-cover rounded-xl border"
+              />
 
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <h3 className="font-semibold">
-                  {t.name}
-                </h3>
+              <div className="flex-1">
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <h2 className="font-bold text-lg">
+                    {team.name}
+                  </h2>
 
-                <span
-                  className={`text-xs px-2 py-1 rounded ${badgeClass(
-                    t.category
-                  )}`}
-                >
-                  {badgeText(t.category)}
-                </span>
-              </div>
+                  <span
+                    className={`text-xs px-2 py-1 rounded-full ${badgeClass(
+                      team.category
+                    )}`}
+                  >
+                    {badgeText(team.category)}
+                  </span>
+                </div>
 
-              <p className="text-sm text-gray-600">
-                {t.position}
-              </p>
-
-              {t.bio && (
-                <p className="text-sm text-gray-500 mt-1">
-                  {t.bio}
+                <p className="text-gray-600 text-sm">
+                  {team.position}
                 </p>
-              )}
 
-              <div className="flex gap-3 mt-2">
-                <button
-                  onClick={() => handleEdit(t)}
-                  className="text-blue-600 text-sm"
-                >
-                  Edit
-                </button>
+                {team.bio && (
+                  <p className="text-gray-500 text-sm mt-2 whitespace-pre-line">
+                    {team.bio}
+                  </p>
+                )}
 
-                <button
-                  onClick={() => handleDelete(t.id)}
-                  className="text-red-600 text-sm"
-                >
-                  Hapus
-                </button>
+                <div className="flex gap-4 mt-4">
+                  <button
+                    onClick={() => handleEdit(team)}
+                    className="text-blue-600 font-medium"
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      handleDelete(team.id)
+                    }
+                    className="text-red-600 font-medium"
+                  >
+                    Hapus
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))
+          ))}
+        </div>
       )}
     </div>
   );
