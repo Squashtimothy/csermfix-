@@ -6,41 +6,33 @@ import {
   createPublication,
   updatePublication,
   deletePublication,
-  archivePublication,
-  unarchivePublication,
 } from "../../services/publicationService";
 
 export default function PublicationManagement() {
+  /* =========================
+     STATES
+  ========================= */
 
-  // ================= STATE =================
   const [rows, setRows] = useState([]);
 
   const [meta, setMeta] = useState({
     page: 1,
-    limit: 10,
-    total: 0,
     totalPages: 1,
+    total: 0,
   });
 
-  const [loading, setLoading] = useState(false);
-
-  const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const [search, setSearch] = useState("");
-
   const [sort, setSort] = useState("year_desc");
-
-  const [showArchived, setShowArchived] = useState(false);
-
   const [page, setPage] = useState(1);
 
-  const limit = 10;
-
-  const [editId, setEditId] = useState(null);
+  const [editingId, setEditingId] = useState(null);
 
   const [form, setForm] = useState({
     title: "",
-    authors: [{ name: "", bold: false }],
+    authors: [""],
     year: new Date().getFullYear(),
     journal: "",
     url: "",
@@ -48,11 +40,71 @@ export default function PublicationManagement() {
     keywords: "",
   });
 
-  // ================= AUTHOR =================
+  /* =========================
+     LOAD DATA
+  ========================= */
+
+  const fetchPublications = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      const res = await getPublications({
+        page,
+        limit: 10,
+        sort,
+        search,
+      });
+
+      console.log("PUBLICATION RESPONSE:", res);
+
+      setRows(Array.isArray(res.data) ? res.data : []);
+
+      setMeta(
+        res.meta || {
+          page: 1,
+          totalPages: 1,
+          total: 0,
+        }
+      );
+    } catch (err) {
+      console.error(err);
+
+      Swal.fire(
+        "Error",
+        err?.response?.data?.message ||
+          "Gagal mengambil publication",
+        "error"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [page, sort, search]);
+
+  useEffect(() => {
+    fetchPublications();
+  }, [fetchPublications]);
+
+  /* =========================
+     FORM HANDLER
+  ========================= */
+
+  const onChange = (e) => {
+    const { name, value } = e.target;
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  /* =========================
+     AUTHOR HANDLER
+  ========================= */
+
   const addAuthor = () => {
     setForm((prev) => ({
       ...prev,
-      authors: [...prev.authors, { name: "", bold: false }],
+      authors: [...prev.authors, ""],
     }));
   };
 
@@ -67,10 +119,10 @@ export default function PublicationManagement() {
     }));
   };
 
-  const updateAuthor = (index, field, value) => {
+  const changeAuthor = (index, value) => {
     const updated = [...form.authors];
 
-    updated[index][field] = value;
+    updated[index] = value;
 
     setForm((prev) => ({
       ...prev,
@@ -78,97 +130,16 @@ export default function PublicationManagement() {
     }));
   };
 
-  // ================= LOAD =================
-  const load = useCallback(
-    async (nextPage = 1) => {
-      try {
-        setLoading(true);
+  /* =========================
+     RESET FORM
+  ========================= */
 
-        const res = await getPublications({
-          page: nextPage,
-          limit,
-          search,
-          sort,
-          archived: showArchived,
-        });
-
-        console.log("PUBLICATION RESPONSE :", res.data);
-
-        let publicationData = [];
-
-        let paginationMeta = {
-          page: nextPage,
-          limit,
-          total: 0,
-          totalPages: 1,
-        };
-
-        // FORMAT ARRAY
-        if (Array.isArray(res.data)) {
-          publicationData = res.data;
-        }
-
-        // FORMAT DATA
-        else if (Array.isArray(res.data?.data)) {
-          publicationData = res.data.data;
-
-          paginationMeta =
-            res.data.meta || paginationMeta;
-        }
-
-        // FORMAT PUBLICATIONS
-        else if (Array.isArray(res.data?.publications)) {
-          publicationData = res.data.publications;
-        }
-
-        setRows(publicationData);
-
-        setMeta(paginationMeta);
-
-        setPage(nextPage);
-
-      } catch (err) {
-
-        console.error(err);
-
-        Swal.fire(
-          "Error",
-          err.response?.data?.message ||
-            "Gagal mengambil publication",
-          "error"
-        );
-
-      } finally {
-        setLoading(false);
-      }
-    },
-    [search, sort, showArchived]
-  );
-
-  // ================= INITIAL LOAD =================
-  useEffect(() => {
-    load(1);
-  }, [load]);
-
-  // ================= SEARCH DELAY =================
-  useEffect(() => {
-
-    const timer = setTimeout(() => {
-      load(1);
-    }, 500);
-
-    return () => clearTimeout(timer);
-
-  }, [search, load]);
-
-  // ================= RESET =================
   const resetForm = () => {
-
-    setEditId(null);
+    setEditingId(null);
 
     setForm({
       title: "",
-      authors: [{ name: "", bold: false }],
+      authors: [""],
       year: new Date().getFullYear(),
       journal: "",
       url: "",
@@ -177,21 +148,87 @@ export default function PublicationManagement() {
     });
   };
 
-  // ================= EDIT =================
+  /* =========================
+     SAVE
+  ========================= */
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      setSaving(true);
+
+      const payload = {
+        title: form.title.trim(),
+        authors: form.authors.filter(Boolean).join(", "),
+        year: form.year,
+        journal: form.journal.trim(),
+        url: form.url.trim(),
+        doi: form.doi.trim(),
+        keywords: form.keywords.trim(),
+      };
+
+      if (
+        !payload.title ||
+        !payload.authors ||
+        !payload.year ||
+        !payload.url
+      ) {
+        return Swal.fire(
+          "Error",
+          "Title, authors, year, dan url wajib diisi",
+          "error"
+        );
+      }
+
+      if (editingId) {
+        await updatePublication(editingId, payload);
+
+        Swal.fire(
+          "Success",
+          "Publication berhasil diupdate",
+          "success"
+        );
+      } else {
+        await createPublication(payload);
+
+        Swal.fire(
+          "Success",
+          "Publication berhasil ditambahkan",
+          "success"
+        );
+      }
+
+      resetForm();
+
+      await fetchPublications();
+    } catch (err) {
+      console.error(err);
+
+      Swal.fire(
+        "Error",
+        err?.response?.data?.message ||
+          "Gagal menyimpan publication",
+        "error"
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /* =========================
+     EDIT
+  ========================= */
+
   const onEdit = (item) => {
-
-    setEditId(item.id);
-
-    const parsedAuthors =
-      item.authors?.split(",").map((author) => ({
-        name: author.replace(/<\/?b>/g, "").trim(),
-        bold: author.includes("<b>"),
-      })) || [{ name: "", bold: false }];
+    setEditingId(item.id);
 
     setForm({
       title: item.title || "",
-      authors: parsedAuthors,
-      year: item.year || new Date().getFullYear(),
+      authors: item.authors
+        ? item.authors.split(",").map((a) => a.trim())
+        : [""],
+      year: item.year || "",
       journal: item.journal || "",
       url: item.url || "",
       doi: item.doi || "",
@@ -204,99 +241,23 @@ export default function PublicationManagement() {
     });
   };
 
-  // ================= SUBMIT =================
-  const onSubmit = async (e) => {
+  /* =========================
+     DELETE
+  ========================= */
 
-    e.preventDefault();
-
-    if (submitting) return;
-
-    try {
-
-      setSubmitting(true);
-
-      const payload = {
-        title: form.title,
-
-        authors: form.authors
-          .map((author) =>
-            author.bold
-              ? `<b>${author.name}</b>`
-              : author.name
-          )
-          .join(", "),
-
-        year: form.year,
-
-        journal: form.journal,
-
-        url: form.url,
-
-        doi: form.doi,
-
-        keywords: form.keywords,
-      };
-
-      console.log("PAYLOAD :", payload);
-
-      if (editId) {
-
-        await updatePublication(editId, payload);
-
-        Swal.fire(
-          "Success",
-          "Publication berhasil diupdate",
-          "success"
-        );
-
-      } else {
-
-        await createPublication(payload);
-
-        Swal.fire(
-          "Success",
-          "Publication berhasil ditambahkan",
-          "success"
-        );
-      }
-
-      resetForm();
-
-      await load(1);
-
-    } catch (err) {
-
-      console.error(err);
-
-      Swal.fire(
-        "Error",
-        err.response?.data?.message ||
-          "Gagal menyimpan publication",
-        "error"
-      );
-
-    } finally {
-
-      setSubmitting(false);
-    }
-  };
-
-  // ================= DELETE =================
   const onDelete = async (id) => {
-
     const confirm = await Swal.fire({
       title: "Hapus publication?",
       text: "Data tidak bisa dikembalikan",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Ya",
+      confirmButtonText: "Hapus",
       cancelButtonText: "Batal",
     });
 
     if (!confirm.isConfirmed) return;
 
     try {
-
       await deletePublication(id);
 
       Swal.fire(
@@ -305,438 +266,316 @@ export default function PublicationManagement() {
         "success"
       );
 
-      load(page);
-
+      await fetchPublications();
     } catch (err) {
+      console.error(err);
 
       Swal.fire(
         "Error",
-        "Gagal menghapus publication",
+        err?.response?.data?.message ||
+          "Gagal menghapus publication",
         "error"
       );
     }
   };
 
-  // ================= ARCHIVE =================
-  const onArchive = async (id, archived = false) => {
+  /* =========================
+     EXPORT JSON
+  ========================= */
 
-    try {
+  const exportArchive = () => {
+    const archiveData = rows.map((item) => ({
+      Title: item.title,
+      Authors: item.authors,
+      Year: item.year,
+      Journal: item.journal,
+      DOI: item.doi,
+      URL: item.url,
+      Keywords: item.keywords,
+    }));
 
-      if (archived) {
+    const json = JSON.stringify(archiveData, null, 2);
 
-        await unarchivePublication(id);
+    const blob = new Blob([json], {
+      type: "application/json",
+    });
 
-        Swal.fire(
-          "Success",
-          "Publication berhasil direstore",
-          "success"
-        );
+    const url = window.URL.createObjectURL(blob);
 
-      } else {
+    const a = document.createElement("a");
 
-        await archivePublication(id);
+    a.href = url;
+    a.download = `publication-archive-${Date.now()}.json`;
 
-        Swal.fire(
-          "Success",
-          "Publication berhasil diarchive",
-          "success"
-        );
-      }
+    document.body.appendChild(a);
 
-      load(page);
+    a.click();
 
-    } catch (err) {
+    a.remove();
 
-      Swal.fire(
-        "Error",
-        "Gagal archive publication",
-        "error"
-      );
-    }
+    window.URL.revokeObjectURL(url);
+
+    Swal.fire(
+      "Success",
+      "Arsip publication berhasil diunduh",
+      "success"
+    );
   };
 
-  // ================= PAGINATION =================
-  const canPrev = page > 1;
-
-  const canNext = page < meta.totalPages;
-
-  // ================= UI =================
   return (
     <div className="max-w-7xl mx-auto p-6">
-
       {/* HEADER */}
-      <div className="mb-6">
-
-        <h1 className="text-3xl font-bold text-slate-800">
-          Publication Management
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold">
+          Kelola Publication
         </h1>
-
-        <p className="text-slate-500">
-          Kelola data publication
-        </p>
-
       </div>
 
       {/* FORM */}
-      <div className="bg-white rounded-2xl shadow border p-6 mb-6">
-
-        <form
-          onSubmit={onSubmit}
-          className="grid md:grid-cols-2 gap-4"
-        >
-
+      <form
+        onSubmit={onSubmit}
+        className="bg-white shadow rounded-2xl p-6 mb-6"
+      >
+        <div className="space-y-4">
           {/* TITLE */}
           <input
-            className="input"
-            placeholder="Judul Publication"
+            type="text"
+            name="title"
+            placeholder="Title"
             value={form.title}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                title: e.target.value,
-              })
-            }
-            required
-          />
-
-          {/* YEAR */}
-          <input
-            type="number"
-            className="input"
-            value={form.year}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                year: e.target.value,
-              })
-            }
-            required
+            onChange={onChange}
+            className="w-full border rounded-xl px-4 py-3"
           />
 
           {/* AUTHORS */}
-          <div className="md:col-span-2">
-
-            <label className="text-sm mb-2 block">
+          <div>
+            <label className="font-medium">
               Authors
             </label>
 
-            {form.authors.map((author, index) => (
-              <div
-                key={index}
-                className="flex gap-2 mb-2"
-              >
-
-                <input
-                  className="input flex-1"
-                  placeholder={`Author ${index + 1}`}
-                  value={author.name}
-                  onChange={(e) =>
-                    updateAuthor(
-                      index,
-                      "name",
-                      e.target.value
-                    )
-                  }
-                  required
-                />
-
-                <label className="flex items-center gap-1 text-sm">
-
+            <div className="space-y-2 mt-2">
+              {form.authors.map((author, index) => (
+                <div
+                  key={index}
+                  className="flex gap-2"
+                >
                   <input
-                    type="checkbox"
-                    checked={author.bold}
+                    type="text"
+                    value={author}
                     onChange={(e) =>
-                      updateAuthor(
+                      changeAuthor(
                         index,
-                        "bold",
-                        e.target.checked
+                        e.target.value
                       )
                     }
+                    placeholder={`Author ${
+                      index + 1
+                    }`}
+                    className="flex-1 border rounded-xl px-4 py-3"
                   />
 
-                  Bold
-
-                </label>
-
-                {form.authors.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeAuthor(index)}
-                    className="text-red-500 px-2"
-                  >
-                    ✕
-                  </button>
-                )}
-
-              </div>
-            ))}
+                  {form.authors.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        removeAuthor(index)
+                      }
+                      className="px-3 py-2 bg-red-500 text-white rounded-xl"
+                    >
+                      X
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
 
             <button
               type="button"
               onClick={addAuthor}
-              className="text-blue-600 text-sm"
+              className="mt-2 text-blue-600"
             >
               + Tambah Author
             </button>
-
           </div>
 
+          {/* YEAR */}
+          <input
+            type="number"
+            name="year"
+            placeholder="Year"
+            value={form.year}
+            onChange={onChange}
+            className="w-full border rounded-xl px-4 py-3"
+          />
+
           {/* JOURNAL */}
-          <textarea
-            className="input md:col-span-2 min-h-[100px] resize-none"
+          <input
+            type="text"
+            name="journal"
             placeholder="Journal"
             value={form.journal}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                journal: e.target.value,
-              })
-            }
-            required
+            onChange={onChange}
+            className="w-full border rounded-xl px-4 py-3"
           />
 
           {/* URL */}
           <input
-            className="input md:col-span-2"
+            type="text"
+            name="url"
             placeholder="URL"
             value={form.url}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                url: e.target.value,
-              })
-            }
+            onChange={onChange}
+            className="w-full border rounded-xl px-4 py-3"
           />
 
           {/* DOI */}
           <input
-            className="input md:col-span-2"
+            type="text"
+            name="doi"
             placeholder="DOI"
             value={form.doi}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                doi: e.target.value,
-              })
-            }
+            onChange={onChange}
+            className="w-full border rounded-xl px-4 py-3"
           />
 
           {/* KEYWORDS */}
           <textarea
-            className="input md:col-span-2"
+            name="keywords"
             placeholder="Keywords"
             value={form.keywords}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                keywords: e.target.value,
-              })
-            }
+            onChange={onChange}
+            rows={4}
+            className="w-full border rounded-xl px-4 py-3"
           />
 
           {/* BUTTON */}
           <button
             type="submit"
-            disabled={submitting}
-            className="md:col-span-2 bg-slate-900 text-white py-3 rounded-xl"
+            disabled={saving}
+            className="w-full bg-[#08112b] text-white py-3 rounded-xl"
           >
-            {submitting
-              ? "Loading..."
-              : editId
-              ? "Update Publication"
+            {saving
+              ? "Menyimpan..."
+              : editingId
+              ? "Update"
               : "Simpan"}
           </button>
-
-        </form>
-      </div>
+        </div>
+      </form>
 
       {/* FILTER */}
-      <div className="flex gap-3 mb-4">
-
-        {/* SEARCH */}
+      <div className="flex flex-col md:flex-row gap-3 mb-4">
         <input
-          className="input w-full"
+          type="text"
           placeholder="Search..."
           value={search}
           onChange={(e) =>
             setSearch(e.target.value)
           }
+          className="flex-1 border rounded-xl px-4 py-2"
         />
 
-        {/* SORT */}
         <select
-          className="input w-48"
           value={sort}
           onChange={(e) =>
             setSort(e.target.value)
           }
+          className="border rounded-xl px-4 py-2"
         >
           <option value="year_desc">
             Terbaru
           </option>
-
           <option value="year_asc">
             Terlama
           </option>
         </select>
 
-        {/* ARCHIVE FILTER */}
+        {/* BUTTON ARSIP */}
         <button
-          onClick={() =>
-            setShowArchived(!showArchived)
-          }
-          className={`px-4 rounded-xl text-sm ${
-            showArchived
-              ? "bg-red-100 text-red-700"
-              : "bg-slate-900 text-white"
-          }`}
+          type="button"
+          onClick={exportArchive}
+          className="bg-[#08112b] text-white px-5 py-2 rounded-xl hover:opacity-90 transition"
         >
-          {showArchived
-            ? "Lihat Active"
-            : "Lihat Archive"}
+          Arsip
         </button>
-
       </div>
 
-      {/* TABLE */}
-      <div className="bg-white rounded-2xl shadow border overflow-hidden">
-
+      {/* LIST */}
+      <div className="bg-white shadow rounded-2xl overflow-hidden">
         {loading ? (
-
-          <p className="p-4 text-gray-500">
+          <div className="p-6 text-center">
             Loading...
-          </p>
-
+          </div>
         ) : rows.length === 0 ? (
-
-          <p className="p-4 text-gray-500">
+          <div className="p-6 text-center">
             Data kosong
-          </p>
-
+          </div>
         ) : (
+          rows.map((item) => (
+            <div
+              key={item.id}
+              className="border-b p-5"
+            >
+              <h2 className="font-bold text-lg">
+                {item.title}
+              </h2>
 
-          <table className="w-full text-sm">
+              <p className="text-sm text-gray-600">
+                {item.authors}
+              </p>
 
-            <thead className="bg-slate-100 text-left">
+              <p className="text-sm mt-1">
+                {item.year}
+              </p>
 
-              <tr>
-
-                <th className="p-3">
-                  Judul
-                </th>
-
-                <th className="p-3">
-                  Authors
-                </th>
-
-                <th className="p-3">
-                  Keywords
-                </th>
-
-                <th className="p-3">
-                  Aksi
-                </th>
-
-              </tr>
-
-            </thead>
-
-            <tbody>
-
-              {rows.map((row) => (
-                <tr
-                  key={row.id}
-                  className="border-t hover:bg-slate-50"
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={() => onEdit(item)}
+                  className="text-blue-600"
                 >
+                  Edit
+                </button>
 
-                  {/* TITLE */}
-                  <td className="p-3">
-                    {row.title}
-                  </td>
-
-                  {/* AUTHORS */}
-                  <td
-                    className="p-3"
-                    dangerouslySetInnerHTML={{
-                      __html: row.authors,
-                    }}
-                  />
-
-                  {/* KEYWORDS */}
-                  <td className="p-3">
-                    {row.keywords}
-                  </td>
-
-                  {/* ACTION */}
-                  <td className="p-3 flex gap-3 items-center">
-
-                    {/* EDIT */}
-                    <button
-                      onClick={() => onEdit(row)}
-                      className="text-blue-600 hover:underline"
-                    >
-                      Edit
-                    </button>
-
-                    {/* ARCHIVE */}
-                    <button
-                      onClick={() =>
-                        onArchive(
-                          row.id,
-                          row.archived
-                        )
-                      }
-                      className="text-yellow-600 hover:underline"
-                    >
-                      {row.archived
-                        ? "Restore"
-                        : "Archive"}
-                    </button>
-
-                    {/* DELETE */}
-                    <button
-                      onClick={() =>
-                        onDelete(row.id)
-                      }
-                      className="text-red-600 hover:underline"
-                    >
-                      Hapus
-                    </button>
-
-                  </td>
-
-                </tr>
-              ))}
-
-            </tbody>
-
-          </table>
+                <button
+                  onClick={() =>
+                    onDelete(item.id)
+                  }
+                  className="text-red-600"
+                >
+                  Hapus
+                </button>
+              </div>
+            </div>
+          ))
         )}
       </div>
 
       {/* PAGINATION */}
       <div className="flex justify-between items-center mt-4">
-
         <button
-          disabled={!canPrev}
-          onClick={() => load(page - 1)}
-          className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
+          disabled={page <= 1}
+          onClick={() =>
+            setPage((p) => p - 1)
+          }
+          className="px-4 py-2 border rounded-xl disabled:opacity-40"
         >
           Prev
         </button>
 
         <span>
-          Page {page} / {meta.totalPages}
+          Page {meta.page} /{" "}
+          {meta.totalPages}
         </span>
 
         <button
-          disabled={!canNext}
-          onClick={() => load(page + 1)}
-          className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
+          disabled={page >= meta.totalPages}
+          onClick={() =>
+            setPage((p) => p + 1)
+          }
+          className="px-4 py-2 border rounded-xl disabled:opacity-40"
         >
           Next
         </button>
-
       </div>
     </div>
   );
