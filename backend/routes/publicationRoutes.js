@@ -1,4 +1,5 @@
 const express = require("express");
+
 const router = express.Router();
 
 const {
@@ -6,14 +7,61 @@ const {
   createPublication,
   updatePublication,
   deletePublication,
+  archivePublication,
+  restorePublication,
 } = require("../controllers/publicationController");
 
-// public read
-router.get("/", getPublications);
+const authMiddleware = require("../middleware/authMiddleware");
 
-// CRUD
-router.post("/", createPublication);
-router.put("/:id", updatePublication);
-router.delete("/:id", deletePublication);
+/* =========================
+   PUBLIC ROUTES
+========================= */
+
+router.get(
+  "/",
+  getPublications
+);
+
+/* =========================
+   ADMIN ROUTES
+========================= */
+
+router.post(
+  "/",
+  authMiddleware,
+  createPublication
+);
+
+router.put(
+  "/:id",
+  authMiddleware,
+  updatePublication
+);
+
+router.delete(
+  "/:id",
+  authMiddleware,
+  deletePublication
+);
+
+/* =========================
+   ARCHIVE
+========================= */
+
+router.patch(
+  "/:id/archive",
+  authMiddleware,
+  archivePublication
+);
+
+/* =========================
+   RESTORE
+========================= */
+
+router.patch(
+  "/:id/restore",
+  authMiddleware,
+  restorePublication
+);
 
 module.exports = router;
