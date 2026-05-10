@@ -41,7 +41,7 @@ export default function PublicationManagement() {
   });
 
   /* =========================
-     LOAD PUBLICATIONS
+     LOAD DATA
   ========================= */
 
   const fetchPublications = useCallback(async () => {
@@ -72,7 +72,7 @@ export default function PublicationManagement() {
       Swal.fire(
         "Error",
         err?.response?.data?.message ||
-          "Gagal mengambil data publication",
+          "Gagal mengambil publication",
         "error"
       );
     } finally {
@@ -110,6 +110,7 @@ export default function PublicationManagement() {
 
   const removeAuthor = (index) => {
     const updated = [...form.authors];
+
     updated.splice(index, 1);
 
     setForm((prev) => ({
@@ -120,6 +121,7 @@ export default function PublicationManagement() {
 
   const changeAuthor = (index, value) => {
     const updated = [...form.authors];
+
     updated[index] = value;
 
     setForm((prev) => ({
@@ -277,11 +279,57 @@ export default function PublicationManagement() {
     }
   };
 
+  /* =========================
+     EXPORT JSON
+  ========================= */
+
+  const exportArchive = () => {
+    const archiveData = rows.map((item) => ({
+      Title: item.title,
+      Authors: item.authors,
+      Year: item.year,
+      Journal: item.journal,
+      DOI: item.doi,
+      URL: item.url,
+      Keywords: item.keywords,
+    }));
+
+    const json = JSON.stringify(archiveData, null, 2);
+
+    const blob = new Blob([json], {
+      type: "application/json",
+    });
+
+    const url = window.URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+
+    a.href = url;
+    a.download = `publication-archive-${Date.now()}.json`;
+
+    document.body.appendChild(a);
+
+    a.click();
+
+    a.remove();
+
+    window.URL.revokeObjectURL(url);
+
+    Swal.fire(
+      "Success",
+      "Arsip publication berhasil diunduh",
+      "success"
+    );
+  };
+
   return (
     <div className="max-w-7xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">
-        Kelola Publication
-      </h1>
+      {/* HEADER */}
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold">
+          Kelola Publication
+        </h1>
+      </div>
 
       {/* FORM */}
       <form
@@ -289,6 +337,7 @@ export default function PublicationManagement() {
         className="bg-white shadow rounded-2xl p-6 mb-6"
       >
         <div className="space-y-4">
+          {/* TITLE */}
           <input
             type="text"
             name="title"
@@ -298,8 +347,11 @@ export default function PublicationManagement() {
             className="w-full border rounded-xl px-4 py-3"
           />
 
+          {/* AUTHORS */}
           <div>
-            <label className="font-medium">Authors</label>
+            <label className="font-medium">
+              Authors
+            </label>
 
             <div className="space-y-2 mt-2">
               {form.authors.map((author, index) => (
@@ -311,16 +363,23 @@ export default function PublicationManagement() {
                     type="text"
                     value={author}
                     onChange={(e) =>
-                      changeAuthor(index, e.target.value)
+                      changeAuthor(
+                        index,
+                        e.target.value
+                      )
                     }
-                    placeholder={`Author ${index + 1}`}
+                    placeholder={`Author ${
+                      index + 1
+                    }`}
                     className="flex-1 border rounded-xl px-4 py-3"
                   />
 
                   {form.authors.length > 1 && (
                     <button
                       type="button"
-                      onClick={() => removeAuthor(index)}
+                      onClick={() =>
+                        removeAuthor(index)
+                      }
                       className="px-3 py-2 bg-red-500 text-white rounded-xl"
                     >
                       X
@@ -339,6 +398,7 @@ export default function PublicationManagement() {
             </button>
           </div>
 
+          {/* YEAR */}
           <input
             type="number"
             name="year"
@@ -348,6 +408,7 @@ export default function PublicationManagement() {
             className="w-full border rounded-xl px-4 py-3"
           />
 
+          {/* JOURNAL */}
           <input
             type="text"
             name="journal"
@@ -357,6 +418,7 @@ export default function PublicationManagement() {
             className="w-full border rounded-xl px-4 py-3"
           />
 
+          {/* URL */}
           <input
             type="text"
             name="url"
@@ -366,6 +428,7 @@ export default function PublicationManagement() {
             className="w-full border rounded-xl px-4 py-3"
           />
 
+          {/* DOI */}
           <input
             type="text"
             name="doi"
@@ -375,6 +438,7 @@ export default function PublicationManagement() {
             className="w-full border rounded-xl px-4 py-3"
           />
 
+          {/* KEYWORDS */}
           <textarea
             name="keywords"
             placeholder="Keywords"
@@ -384,6 +448,7 @@ export default function PublicationManagement() {
             className="w-full border rounded-xl px-4 py-3"
           />
 
+          {/* BUTTON */}
           <button
             type="submit"
             disabled={saving}
@@ -399,26 +464,43 @@ export default function PublicationManagement() {
       </form>
 
       {/* FILTER */}
-      <div className="flex gap-3 mb-4">
+      <div className="flex flex-col md:flex-row gap-3 mb-4">
         <input
           type="text"
           placeholder="Search..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) =>
+            setSearch(e.target.value)
+          }
           className="flex-1 border rounded-xl px-4 py-2"
         />
 
         <select
           value={sort}
-          onChange={(e) => setSort(e.target.value)}
+          onChange={(e) =>
+            setSort(e.target.value)
+          }
           className="border rounded-xl px-4 py-2"
         >
-          <option value="year_desc">Terbaru</option>
-          <option value="year_asc">Terlama</option>
+          <option value="year_desc">
+            Terbaru
+          </option>
+          <option value="year_asc">
+            Terlama
+          </option>
         </select>
+
+        {/* BUTTON ARSIP */}
+        <button
+          type="button"
+          onClick={exportArchive}
+          className="bg-[#08112b] text-white px-5 py-2 rounded-xl hover:opacity-90 transition"
+        >
+          Arsip
+        </button>
       </div>
 
-      {/* TABLE */}
+      {/* LIST */}
       <div className="bg-white shadow rounded-2xl overflow-hidden">
         {loading ? (
           <div className="p-6 text-center">
@@ -455,7 +537,9 @@ export default function PublicationManagement() {
                 </button>
 
                 <button
-                  onClick={() => onDelete(item.id)}
+                  onClick={() =>
+                    onDelete(item.id)
+                  }
                   className="text-red-600"
                 >
                   Hapus
@@ -470,19 +554,24 @@ export default function PublicationManagement() {
       <div className="flex justify-between items-center mt-4">
         <button
           disabled={page <= 1}
-          onClick={() => setPage((p) => p - 1)}
+          onClick={() =>
+            setPage((p) => p - 1)
+          }
           className="px-4 py-2 border rounded-xl disabled:opacity-40"
         >
           Prev
         </button>
 
         <span>
-          Page {meta.page} / {meta.totalPages}
+          Page {meta.page} /{" "}
+          {meta.totalPages}
         </span>
 
         <button
           disabled={page >= meta.totalPages}
-          onClick={() => setPage((p) => p + 1)}
+          onClick={() =>
+            setPage((p) => p + 1)
+          }
           className="px-4 py-2 border rounded-xl disabled:opacity-40"
         >
           Next
@@ -490,4 +579,4 @@ export default function PublicationManagement() {
       </div>
     </div>
   );
-} 
+}
