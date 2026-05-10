@@ -11,7 +11,7 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const path = require("path");
 
-// Load ENV
+// LOAD ENV
 dotenv.config();
 
 const app = express();
@@ -19,69 +19,106 @@ const app = express();
 /* ======================
    DEBUG ENV
 ====================== */
+
 console.log("PORT:", process.env.PORT);
-console.log("CORS_ORIGIN:", process.env.CORS_ORIGIN);
 console.log("DB_HOST:", process.env.DB_HOST);
 console.log("DB_NAME:", process.env.DB_NAME);
 
 /* ======================
    DB CONNECTION TEST
 ====================== */
+
 const db = require("./config/db");
 
 (async () => {
   try {
     const [rows] = await db.query("SHOW TABLES");
+
     console.log("DB CONNECTED SUCCESSFULLY");
     console.log("Tables:", rows);
   } catch (err) {
-    console.error("DB CONNECTION FAILED:(:", err.message);
+    console.error("DB CONNECTION FAILED:", err.message);
   }
 })();
+
+/* ======================
+   CORS
+====================== */
+
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://cserm.unas.ac.id",
+  "https://www.cserm.unas.ac.id",
+];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // izinkan request tanpa origin
+      // contoh: postman / mobile apps
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      console.log("BLOCKED CORS:", origin);
+
+      return callback(new Error("Not allowed by CORS"));
+    },
+
+    credentials: true,
+  })
+);
+
+// handle preflight request
+app.options("*", cors());
 
 /* ======================
    MIDDLEWARE
 ====================== */
 
-const allowedOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(",")
-  : ["*"];
+app.use(express.json({ limit: "5mb" }));
 
 app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("CORS not allowed"));
-      }
-    },
-    credentials: true,
+  express.urlencoded({
+    extended: true,
+    limit: "5mb",
   })
 );
 
-app.use(express.json({ limit: "5mb" }));
-app.use(express.urlencoded({ extended: true, limit: "5mb" }));
+/* ======================
+   STATIC FILES
+====================== */
 
-// Static uploads
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "uploads"))
+);
 
 /* ======================
    ROUTES
 ====================== */
 
-const authRoutes = require("./routes/authRoutes.js");
-const newsRoutes = require("./routes/newsRoutes.js");
-const teamRoutes = require("./routes/teamRoutes.js");
-const publicationRoutes = require("./routes/publicationRoutes.js");
-const homepageRoutes = require("./routes/homepageRoutes.js");
-const projectRoutes = require("./routes/projectRoutes.js");
+const authRoutes = require("./routes/authRoutes");
+const newsRoutes = require("./routes/newsRoutes");
+const teamRoutes = require("./routes/teamRoutes");
+const publicationRoutes = require("./routes/publicationRoutes");
+const homepageRoutes = require("./routes/homepageRoutes");
+const projectRoutes = require("./routes/projectRoutes");
 
 app.use("/api/auth", authRoutes);
+
 app.use("/api/news", newsRoutes);
+
 app.use("/api/teams", teamRoutes);
+
 app.use("/api/publications", publicationRoutes);
+
 app.use("/api/homepage", homepageRoutes);
+
 app.use("/api/projects", projectRoutes);
 
 /* ======================
@@ -101,7 +138,9 @@ app.get("/", (req, res) => {
 ====================== */
 
 app.use((req, res) => {
-  res.status(404).json({ message: "Route not found" });
+  res.status(404).json({
+    message: "Route not found",
+  });
 });
 
 /* ======================
@@ -139,5 +178,6 @@ const PORT = process.env.PORT || 5000;
 
 // Railway wajib pakai 0.0.0.0
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(` Server running on port ${PORT}`);
+  console.log(`
+     Server running on port ${PORT}`);
 });
