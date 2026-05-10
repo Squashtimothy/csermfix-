@@ -1,5 +1,9 @@
 import axios from "axios";
 
+/* =========================
+   BASE URL
+========================= */
+
 const API_BASE_URL = (
   process.env.REACT_APP_API_URL ||
   "https://resilient-balance-production-57f8.up.railway.app"
@@ -18,7 +22,16 @@ const authHeaders = () => {
 };
 
 /* =========================
-   PUBLICATIONS - PUBLIC
+   AXIOS INSTANCE
+========================= */
+
+const api = axios.create({
+  baseURL: `${API_BASE_URL}/api`,
+  timeout: 10000,
+});
+
+/* =========================
+   PUBLICATIONS - GET
 ========================= */
 
 export const getPublications = async ({
@@ -26,17 +39,33 @@ export const getPublications = async ({
   limit = 10,
   sort = "year_desc",
   search = "",
+  archived = false,
 } = {}) => {
-  const response = await axios.get(
-    `${API_BASE_URL}/api/publications`,
+
+  const response = await api.get("/publications", {
+    params: {
+      page,
+      limit,
+      sort,
+      search,
+      archived,
+    },
+  });
+
+  return response.data;
+};
+
+/* =========================
+   PUBLICATIONS - CREATE
+========================= */
+
+export const createPublication = async (payload) => {
+
+  const response = await api.post(
+    "/publications",
+    payload,
     {
-      params: {
-        page,
-        limit,
-        sort,
-        search,
-      },
-      timeout: 10000,
+      headers: authHeaders(),
     }
   );
 
@@ -44,41 +73,69 @@ export const getPublications = async ({
 };
 
 /* =========================
-   PUBLICATIONS - ADMIN
+   PUBLICATIONS - UPDATE
 ========================= */
 
-export const createPublication = async (payload) => {
-  const response = await axios.post(
-    `${API_BASE_URL}/api/publications`,
+export const updatePublication = async (
+  id,
+  payload
+) => {
+
+  const response = await api.put(
+    `/publications/${id}`,
     payload,
     {
       headers: authHeaders(),
-      timeout: 10000,
     }
   );
 
   return response.data;
 };
 
-export const updatePublication = async (id, payload) => {
-  const response = await axios.put(
-    `${API_BASE_URL}/api/publications/${id}`,
-    payload,
-    {
-      headers: authHeaders(),
-      timeout: 10000,
-    }
-  );
-
-  return response.data;
-};
+/* =========================
+   PUBLICATIONS - DELETE
+========================= */
 
 export const deletePublication = async (id) => {
-  const response = await axios.delete(
-    `${API_BASE_URL}/api/publications/${id}`,
+
+  const response = await api.delete(
+    `/publications/${id}`,
     {
       headers: authHeaders(),
-      timeout: 10000,
+    }
+  );
+
+  return response.data;
+};
+
+/* =========================
+   PUBLICATIONS - ARCHIVE
+========================= */
+
+export const archivePublication = async (id) => {
+
+  const response = await api.patch(
+    `/publications/${id}/archive`,
+    {},
+    {
+      headers: authHeaders(),
+    }
+  );
+
+  return response.data;
+};
+
+/* =========================
+   PUBLICATIONS - RESTORE
+========================= */
+
+export const unarchivePublication = async (id) => {
+
+  const response = await api.patch(
+    `/publications/${id}/restore`,
+    {},
+    {
+      headers: authHeaders(),
     }
   );
 
