@@ -42,7 +42,7 @@ const db = require("./config/db");
 })();
 
 /* ======================
-   CORS FIX
+   CORS CONFIG
 ====================== */
 
 const allowedOrigins = [
@@ -53,14 +53,19 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // allow requests with no origin
-    if (!origin) return callback(null, true);
+    // Allow requests without origin (Postman/mobile app)
+    if (!origin) {
+      return callback(null, true);
+    }
 
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       console.log("Blocked by CORS:", origin);
-      callback(new Error("Not allowed by CORS"));
+
+      callback(
+        new Error(`CORS blocked for origin: ${origin}`)
+      );
     }
   },
 
@@ -78,9 +83,6 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-
-// Handle preflight requests
-app.options("*", cors(corsOptions));
 
 /* ======================
    BODY PARSER
