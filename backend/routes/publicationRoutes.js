@@ -2,6 +2,10 @@ const express = require("express");
 
 const router = express.Router();
 
+/* =========================
+   CONTROLLERS
+========================= */
+
 const {
   getPublications,
   createPublication,
@@ -11,12 +15,38 @@ const {
   restorePublication,
 } = require("../controllers/publicationController");
 
-const authMiddleware = require("../middleware/authMiddleware");
+/* =========================
+   MIDDLEWARE
+========================= */
+
+const {
+  verifyToken,
+} = require("../middleware/authMiddleware");
+
+/* =========================
+   DEBUG
+========================= */
+
+console.log(
+  "typeof getPublications:",
+  typeof getPublications
+);
+
+console.log(
+  "typeof createPublication:",
+  typeof createPublication
+);
+
+console.log(
+  "typeof verifyToken:",
+  typeof verifyToken
+);
 
 /* =========================
    PUBLIC ROUTES
 ========================= */
 
+// GET ALL PUBLICATIONS
 router.get(
   "/",
   getPublications
@@ -26,21 +56,24 @@ router.get(
    ADMIN ROUTES
 ========================= */
 
+// CREATE
 router.post(
   "/",
-  authMiddleware,
+  verifyToken,
   createPublication
 );
 
+// UPDATE
 router.put(
   "/:id",
-  authMiddleware,
+  verifyToken,
   updatePublication
 );
 
+// DELETE
 router.delete(
   "/:id",
-  authMiddleware,
+  verifyToken,
   deletePublication
 );
 
@@ -48,9 +81,10 @@ router.delete(
    ARCHIVE
 ========================= */
 
+// ARCHIVE
 router.patch(
   "/:id/archive",
-  authMiddleware,
+  verifyToken,
   archivePublication
 );
 
@@ -58,10 +92,15 @@ router.patch(
    RESTORE
 ========================= */
 
+// RESTORE
 router.patch(
   "/:id/restore",
-  authMiddleware,
+  verifyToken,
   restorePublication
 );
+
+/* =========================
+   EXPORT
+========================= */
 
 module.exports = router;
