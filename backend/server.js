@@ -11,7 +11,7 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const path = require("path");
 
-// Load ENV
+// LOAD ENV
 dotenv.config();
 
 const app = express();
@@ -19,69 +19,126 @@ const app = express();
 /* ======================
    DEBUG ENV
 ====================== */
+
 console.log("PORT:", process.env.PORT);
-console.log("CORS_ORIGIN:", process.env.CORS_ORIGIN);
 console.log("DB_HOST:", process.env.DB_HOST);
 console.log("DB_NAME:", process.env.DB_NAME);
 
 /* ======================
    DB CONNECTION TEST
 ====================== */
+
 const db = require("./config/db");
 
 (async () => {
   try {
     const [rows] = await db.query("SHOW TABLES");
+
     console.log("DB CONNECTED SUCCESSFULLY");
     console.log("Tables:", rows);
   } catch (err) {
-    console.error("DB CONNECTION FAILED:(:", err.message);
+    console.error("DB CONNECTION FAILED:", err.message);
   }
 })();
 
 /* ======================
-   MIDDLEWARE
+   FORCE CORS FIX
 ====================== */
 
-const allowedOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(",")
-  : ["*"];
+app.use((req, res, next) => {
+  const allowedOrigins = [
+    "http://localhost:3000",
+    "https://cserm.unas.ac.id",
+    "https://www.cserm.unas.ac.id",
+  ];
+
+  const origin = req.headers.origin;
+
+  if (allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+  }
+
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+  );
+
+  res.header(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+  );
+
+  res.header(
+    "Access-Control-Allow-Credentials",
+    "true"
+  );
+
+  // Handle preflight request
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+
+  next();
+});
+
+/* ======================
+   CORS
+====================== */
 
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("CORS not allowed"));
-      }
-    },
+    origin: [
+      "http://localhost:3000",
+      "https://cserm.unas.ac.id",
+      "https://www.cserm.unas.ac.id",
+    ],
     credentials: true,
   })
 );
 
-app.use(express.json({ limit: "5mb" }));
-app.use(express.urlencoded({ extended: true, limit: "5mb" }));
+/* ======================
+   BODY PARSER
+====================== */
 
-// Static uploads
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use(express.json({ limit: "5mb" }));
+
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: "5mb",
+  })
+);
+
+/* ======================
+   STATIC FILES
+====================== */
+
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "uploads"))
+);
 
 /* ======================
    ROUTES
 ====================== */
 
-const authRoutes = require("./routes/authRoutes.js");
-const newsRoutes = require("./routes/newsRoutes.js");
-const teamRoutes = require("./routes/teamRoutes.js");
-const publicationRoutes = require("./routes/publicationRoutes.js");
-const homepageRoutes = require("./routes/homepageRoutes.js");
-const projectRoutes = require("./routes/projectRoutes.js");
+const authRoutes = require("./routes/authRoutes");
+const newsRoutes = require("./routes/newsRoutes");
+const teamRoutes = require("./routes/teamRoutes");
+const publicationRoutes = require("./routes/publicationRoutes");
+const homepageRoutes = require("./routes/homepageRoutes");
+const projectRoutes = require("./routes/projectRoutes");
 
 app.use("/api/auth", authRoutes);
+
 app.use("/api/news", newsRoutes);
+
 app.use("/api/teams", teamRoutes);
+
 app.use("/api/publications", publicationRoutes);
+
 app.use("/api/homepage", homepageRoutes);
+
 app.use("/api/projects", projectRoutes);
 
 /* ======================
@@ -101,7 +158,9 @@ app.get("/", (req, res) => {
 ====================== */
 
 app.use((req, res) => {
-  res.status(404).json({ message: "Route not found" });
+  res.status(404).json({
+    message: "Route not found",
+  });
 });
 
 /* ======================
@@ -139,5 +198,5 @@ const PORT = process.env.PORT || 5000;
 
 // Railway wajib pakai 0.0.0.0
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(` Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
