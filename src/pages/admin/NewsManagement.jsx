@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import Swal from "sweetalert2";
+
 import {
   getNews,
   createNews,
@@ -7,7 +9,9 @@ import {
   updateNewsStatus,
 } from "../../services/newsService";
 
-import Swal from "sweetalert2";
+/* ======================
+   API BASE
+====================== */
 
 const API_BASE = (
   process.env.REACT_APP_API_URL ||
@@ -38,19 +42,20 @@ export default function NewsManagement() {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
   const [editId, setEditId] = useState(null);
 
   const [form, setForm] = useState({
     title: "",
     content: "",
-    image: null,
     status: "published",
+    image: null,
   });
 
   const [fileKey, setFileKey] = useState(Date.now());
 
   /* ======================
-     LOAD DATA
+     LOAD NEWS
   ====================== */
 
   const loadData = async () => {
@@ -59,10 +64,15 @@ export default function NewsManagement() {
 
       const data = await getNews();
 
-      console.log("NEWS:", data);
+      console.log(
+        "NEWS RESPONSE:",
+        JSON.stringify(data, null, 2)
+      );
 
       if (Array.isArray(data)) {
         setNews(data);
+      } else if (Array.isArray(data?.data)) {
+        setNews(data.data);
       } else {
         setNews([]);
       }
@@ -106,8 +116,8 @@ export default function NewsManagement() {
     setForm({
       title: "",
       content: "",
-      image: null,
       status: "published",
+      image: null,
     });
 
     setEditId(null);
@@ -215,8 +225,8 @@ export default function NewsManagement() {
     setForm({
       title: item.title || "",
       content: item.content || "",
-      image: null,
       status: item.status || "published",
+      image: null,
     });
 
     setFileKey(Date.now());
@@ -228,7 +238,7 @@ export default function NewsManagement() {
   };
 
   /* ======================
-     TOGGLE STATUS
+     STATUS
   ====================== */
 
   const handleToggleStatus = async (item) => {
@@ -263,8 +273,12 @@ export default function NewsManagement() {
     }
   };
 
+  /* ======================
+     RENDER
+  ====================== */
+
   return (
-    <div className="max-w-4xl mx-auto p-4">
+    <div className="max-w-6xl mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">
         Kelola News
       </h1>
@@ -343,80 +357,104 @@ export default function NewsManagement() {
         </div>
       </form>
 
-      {/* LIST */}
+      {/* LIST NEWS */}
 
       {loading ? (
         <p>Loading...</p>
       ) : news.length === 0 ? (
         <p>Tidak ada data news</p>
       ) : (
-        news.map((n) => (
-          <div
-            key={n.id}
-            className="bg-white p-4 rounded shadow mb-3"
-          >
-            <h3 className="font-semibold text-lg">
-              {n.title}
-            </h3>
+        <div className="space-y-4">
+          {news.map((n) => {
+            const imageSource =
+              n.image ||
+              n.image_url ||
+              n.thumbnail ||
+              "";
 
-            <p className="text-sm text-gray-600 mb-2">
-              {n.content}
-            </p>
+            console.log(
+              "IMAGE SOURCE:",
+              imageSource
+            );
 
-            {/* IMAGE FIX */}
-
-            <img
-              src={resolveImage(n.image)}
-              alt={n.title}
-              className="w-40 h-28 object-cover rounded mb-2 border"
-              onError={(e) => {
-                e.target.src =
-                  "https://via.placeholder.com/400x200?text=No+Image";
-              }}
-            />
-
-            {/* STATUS */}
-
-            <span
-              className={`text-xs px-2 py-1 rounded ${
-                n.status === "draft"
-                  ? "bg-yellow-200 text-yellow-800"
-                  : "bg-green-200 text-green-800"
-              }`}
-            >
-              {n.status}
-            </span>
-
-            {/* ACTION */}
-
-            <div className="flex gap-3 mt-3">
-              <button
-                onClick={() => handleEdit(n)}
-                className="text-blue-600 text-sm"
+            return (
+              <div
+                key={n.id}
+                className="bg-white p-4 rounded shadow"
               >
-                Edit
-              </button>
+                <h3 className="font-bold text-xl">
+                  {n.title}
+                </h3>
 
-              <button
-                onClick={() => handleDelete(n.id)}
-                className="text-red-600 text-sm"
-              >
-                Hapus
-              </button>
+                <p className="text-gray-600 mb-2">
+                  {n.content}
+                </p>
 
-              <button
-                onClick={() =>
-                  handleToggleStatus(n)
-                }
-                className="text-yellow-600 text-sm"
-              >
-                {n.status === "published"
-                  ? "Jadikan Draft"
-                  : "Publish"}
-              </button>
-            </div>
-          </div>
-        ))
+                {/* IMAGE */}
+
+                <img
+                  src={resolveImage(imageSource)}
+                  alt={n.title || "news-image"}
+                  className="w-40 h-28 object-cover rounded border bg-gray-100 mb-3"
+                  onError={(e) => {
+                    console.log(
+                      "IMAGE FAILED:",
+                      imageSource
+                    );
+
+                    e.target.onerror = null;
+
+                    e.target.src =
+                      "https://via.placeholder.com/400x200?text=No+Image";
+                  }}
+                />
+
+                {/* STATUS */}
+
+                <span
+                  className={`text-xs px-2 py-1 rounded ${
+                    n.status === "draft"
+                      ? "bg-yellow-200 text-yellow-800"
+                      : "bg-green-200 text-green-800"
+                  }`}
+                >
+                  {n.status}
+                </span>
+
+                {/* ACTION */}
+
+                <div className="flex gap-3 mt-3">
+                  <button
+                    onClick={() => handleEdit(n)}
+                    className="text-blue-600"
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      handleDelete(n.id)
+                    }
+                    className="text-red-600"
+                  >
+                    Hapus
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      handleToggleStatus(n)
+                    }
+                    className="text-yellow-600"
+                  >
+                    {n.status === "published"
+                      ? "Jadikan Draft"
+                      : "Publish"}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
