@@ -1,24 +1,45 @@
 const express = require("express");
+
 const router = express.Router();
 
 const newsController = require("../controllers/newsController");
-const { verifyToken, isAdmin } = require("../middleware/authMiddleware");
+
+const {
+  verifyToken,
+  isAdmin,
+} = require("../middleware/authMiddleware");
+
 const upload = require("../middleware/upload");
 
-/* ========= PUBLIC ========= */
+/* =========================
+   PUBLIC ROUTES
+========================= */
 
-//  Ambil semua (bisa filter ?status=published)
-router.get("/", newsController.getAll);
+// GET ALL
+router.get(
+  "/",
+  newsController.getAll
+);
 
-//  OPTIONAL: endpoint khusus published (clean URL)
-router.get("/published", (req, res) => {
-  req.query.status = "published";
-  newsController.getAll(req, res);
-});
+// GET PUBLISHED ONLY
+router.get(
+  "/published",
+  (req, res) => {
+    req.query.status = "published";
 
-router.get("/:id", newsController.getById);
+    newsController.getAll(req, res);
+  }
+);
 
-/* ========= ADMIN ========= */
+// GET DETAIL
+router.get(
+  "/:id",
+  newsController.getById
+);
+
+/* =========================
+   ADMIN ROUTES
+========================= */
 
 // CREATE
 router.post(
@@ -29,7 +50,7 @@ router.post(
   newsController.create
 );
 
-// UPDATE (full edit)
+// UPDATE FULL
 router.put(
   "/:id",
   verifyToken,
@@ -38,12 +59,12 @@ router.put(
   newsController.update
 );
 
-//  UPDATE STATUS ONLY (SUPER PENTING)
+// UPDATE STATUS ONLY
 router.patch(
   "/:id/status",
   verifyToken,
   isAdmin,
-  newsController.update
+  newsController.updateStatus
 );
 
 // DELETE
