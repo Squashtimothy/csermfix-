@@ -16,15 +16,11 @@ exports.getAll = async (req, res) => {
       data: rows,
     });
   } catch (err) {
-    console.error(
-      "GET NEWS ERROR:",
-      err
-    );
+    console.error("GET NEWS ERROR:", err);
 
     return res.status(500).json({
       success: false,
-      message:
-        "Gagal mengambil news",
+      message: "Gagal mengambil news",
       error: err.message,
     });
   }
@@ -33,19 +29,14 @@ exports.getAll = async (req, res) => {
 /* =========================
    GET PUBLISHED NEWS
 ========================= */
-exports.getPublished = async (
-  req,
-  res
-) => {
+exports.getPublished = async (req, res) => {
   try {
-    const [rows] = await db.query(
-      `
+    const [rows] = await db.query(`
       SELECT *
       FROM news
       WHERE status = 'published'
       ORDER BY created_at DESC
-      `
-    );
+    `);
 
     return res.status(200).json({
       success: true,
@@ -53,7 +44,7 @@ exports.getPublished = async (
     });
   } catch (err) {
     console.error(
-      "GET PUBLISHED NEWS ERROR:",
+      "GET PUBLISHED ERROR:",
       err
     );
 
@@ -67,29 +58,21 @@ exports.getPublished = async (
 };
 
 /* =========================
-   GET NEWS BY ID
+   GET BY ID
 ========================= */
-exports.getById = async (
-  req,
-  res
-) => {
+exports.getById = async (req, res) => {
   try {
     const { id } = req.params;
 
     const [rows] = await db.query(
-      `
-      SELECT *
-      FROM news
-      WHERE id = ?
-      `,
+      "SELECT * FROM news WHERE id = ?",
       [id]
     );
 
     if (rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message:
-          "News tidak ditemukan",
+        message: "News tidak ditemukan",
       });
     }
 
@@ -115,10 +98,7 @@ exports.getById = async (
 /* =========================
    CREATE NEWS
 ========================= */
-exports.create = async (
-  req,
-  res
-) => {
+exports.create = async (req, res) => {
   try {
     console.log(
       "BODY:",
@@ -144,14 +124,12 @@ exports.create = async (
       });
     }
 
-    // IMAGE
     let image = null;
 
     if (req.file) {
       image = `/uploads/news/${req.file.filename}`;
     }
 
-    // INSERT
     const [result] = await db.query(
       `
       INSERT INTO news
@@ -166,16 +144,18 @@ exports.create = async (
       ]
     );
 
-    console.log(
-      "NEWS CREATED:",
-      result
-    );
-
     return res.status(201).json({
       success: true,
       message:
         "News berhasil ditambahkan",
-      id: result.insertId,
+      data: {
+        id: result.insertId,
+        title,
+        content,
+        image,
+        status:
+          status || "published",
+      },
     });
   } catch (err) {
     console.error(
@@ -195,10 +175,7 @@ exports.create = async (
 /* =========================
    UPDATE NEWS
 ========================= */
-exports.update = async (
-  req,
-  res
-) => {
+exports.update = async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -208,23 +185,13 @@ exports.update = async (
       status,
     } = req.body;
 
-    let image = null;
+    const [oldRows] =
+      await db.query(
+        "SELECT * FROM news WHERE id = ?",
+        [id]
+      );
 
-    if (req.file) {
-      image = `/uploads/news/${req.file.filename}`;
-    }
-
-    // GET OLD DATA
-    const [oldData] = await db.query(
-      `
-      SELECT *
-      FROM news
-      WHERE id = ?
-      `,
-      [id]
-    );
-
-    if (oldData.length === 0) {
+    if (oldRows.length === 0) {
       return res.status(404).json({
         success: false,
         message:
@@ -232,7 +199,13 @@ exports.update = async (
       });
     }
 
-    const oldNews = oldData[0];
+    const oldData = oldRows[0];
+
+    let image = oldData.image;
+
+    if (req.file) {
+      image = `/uploads/news/${req.file.filename}`;
+    }
 
     await db.query(
       `
@@ -245,10 +218,10 @@ exports.update = async (
       WHERE id = ?
       `,
       [
-        title || oldNews.title,
-        content || oldNews.content,
-        image || oldNews.image,
-        status || oldNews.status,
+        title || oldData.title,
+        content || oldData.content,
+        image,
+        status || oldData.status,
         id,
       ]
     );
@@ -267,7 +240,7 @@ exports.update = async (
     return res.status(500).json({
       success: false,
       message:
-        "Gagal update news",
+        "UPDATE NEWS ERROR",
       error: err.message,
     });
   }
@@ -280,19 +253,8 @@ exports.updateStatus =
   async (req, res) => {
     try {
       const { id } = req.params;
-
       const { status } =
         req.body;
-
-      if (!status) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message:
-              "Status wajib diisi",
-          });
-      }
 
       await db.query(
         `
@@ -303,45 +265,35 @@ exports.updateStatus =
         [status, id]
       );
 
-      return res
-        .status(200)
-        .json({
-          success: true,
-          message:
-            "Status berhasil diupdate",
-        });
+      return res.status(200).json({
+        success: true,
+        message:
+          "Status berhasil diupdate",
+      });
     } catch (err) {
       console.error(
-        "UPDATE STATUS ERROR:",
+        "STATUS ERROR:",
         err
       );
 
-      return res
-        .status(500)
-        .json({
-          success: false,
-          message:
-            "Gagal update status",
-          error: err.message,
-        });
+      return res.status(500).json({
+        success: false,
+        message:
+          "Gagal update status",
+        error: err.message,
+      });
     }
   };
 
 /* =========================
    DELETE NEWS
 ========================= */
-exports.remove = async (
-  req,
-  res
-) => {
+exports.remove = async (req, res) => {
   try {
     const { id } = req.params;
 
     await db.query(
-      `
-      DELETE FROM news
-      WHERE id = ?
-      `,
+      "DELETE FROM news WHERE id = ?",
       [id]
     );
 
@@ -352,7 +304,7 @@ exports.remove = async (
     });
   } catch (err) {
     console.error(
-      "DELETE NEWS ERROR:",
+      "DELETE ERROR:",
       err
     );
 
