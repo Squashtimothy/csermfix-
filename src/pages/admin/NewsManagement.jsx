@@ -9,6 +9,31 @@ import {
 
 import Swal from "sweetalert2";
 
+const API_BASE = (
+  process.env.REACT_APP_API_URL ||
+  "https://resilient-balance-production-57f8.up.railway.app"
+).replace(/\/$/, "");
+
+/* ======================
+   RESOLVE IMAGE
+====================== */
+
+const resolveImage = (image) => {
+  if (!image) {
+    return "https://via.placeholder.com/400x200?text=No+Image";
+  }
+
+  // jika sudah full url
+  if (image.startsWith("http")) {
+    return image;
+  }
+
+  // hapus slash depan jika ada
+  const cleanImage = image.replace(/^\/+/, "");
+
+  return `${API_BASE}/uploads/${cleanImage}`;
+};
+
 export default function NewsManagement() {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -38,19 +63,19 @@ export default function NewsManagement() {
 
       let data = [];
 
-      // HANDLE ARRAY
-      if (Array.isArray(res.data)) {
+      // array langsung
+      if (Array.isArray(res)) {
+        data = res;
+      }
+
+      // axios response.data array
+      else if (Array.isArray(res.data)) {
         data = res.data;
       }
 
-      // HANDLE OBJECT
+      // nested data
       else if (Array.isArray(res.data?.data)) {
         data = res.data.data;
-      }
-
-      // HANDLE SINGLE OBJECT
-      else if (typeof res.data === "object") {
-        data = [];
       }
 
       setNews(data);
@@ -123,12 +148,6 @@ export default function NewsManagement() {
         formData.append("image", form.image);
       }
 
-      console.log("FORM DATA:");
-      console.log("TITLE:", form.title);
-      console.log("CONTENT:", form.content);
-      console.log("STATUS:", form.status);
-      console.log("IMAGE:", form.image);
-
       let response;
 
       // UPDATE
@@ -153,15 +172,13 @@ export default function NewsManagement() {
         });
       }
 
-      console.log("SUBMIT RESPONSE:", response.data);
+      console.log("SUBMIT RESPONSE:", response);
 
       resetForm();
 
       await loadData();
     } catch (err) {
       console.error("SUBMIT ERROR:", err);
-
-      console.log("ERROR RESPONSE:", err?.response);
 
       Swal.fire({
         icon: "error",
@@ -197,7 +214,7 @@ export default function NewsManagement() {
         text: "News berhasil dihapus",
       });
 
-      loadData();
+      await loadData();
     } catch (err) {
       console.error("DELETE ERROR:", err);
 
@@ -242,8 +259,6 @@ export default function NewsManagement() {
           ? "draft"
           : "published";
 
-      console.log("UPDATE STATUS:", item.id, newStatus);
-
       await updateNewsStatus(
         item.id,
         newStatus
@@ -255,7 +270,7 @@ export default function NewsManagement() {
         text: `Status diubah ke ${newStatus}`,
       });
 
-      loadData();
+      await loadData();
     } catch (err) {
       console.error("STATUS ERROR:", err);
 
@@ -370,14 +385,20 @@ export default function NewsManagement() {
               {n.content}
             </p>
 
+            {/* IMAGE */}
             {n.image && (
               <img
-                src={`${process.env.REACT_APP_API_URL}/uploads/${n.image}`}
+                src={resolveImage(n.image)}
                 alt={n.title}
-                className="w-40 rounded mb-2"
+                className="w-40 h-28 object-cover rounded mb-2 border"
+                onError={(e) => {
+                  e.target.src =
+                    "https://via.placeholder.com/400x200?text=No+Image";
+                }}
               />
             )}
 
+            {/* STATUS */}
             <span
               className={`text-xs px-2 py-1 rounded ${
                 n.status === "draft"
@@ -388,6 +409,7 @@ export default function NewsManagement() {
               {n.status}
             </span>
 
+            {/* ACTION */}
             <div className="flex gap-3 mt-3">
               <button
                 onClick={() => handleEdit(n)}
