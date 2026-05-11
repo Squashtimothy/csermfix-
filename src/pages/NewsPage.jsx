@@ -1,11 +1,9 @@
 import {
   useEffect,
   useState,
-  useCallback,
 } from "react";
 
 import {
-  useParams,
   useNavigate,
 } from "react-router-dom";
 
@@ -20,21 +18,15 @@ const API_URL =
 const noImage =
   "https://via.placeholder.com/400x200?text=No+Image";
 
-export default function NewsDetail() {
-  const { id } = useParams();
-  const navigate = useNavigate();
+export default function NewsPage() {
+  const navigate =
+    useNavigate();
 
   const [news, setNews] =
-    useState(null);
-
-  const [latestNews, setLatestNews] =
     useState([]);
 
   const [loading, setLoading] =
     useState(true);
-
-  const [error, setError] =
-    useState("");
 
   /* =========================
      FORMAT DATE
@@ -43,18 +35,19 @@ export default function NewsDetail() {
   const formatDate = (date) => {
     if (!date) return "-";
 
-    return new Date(date).toLocaleDateString(
-      "id-ID",
-      {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      }
-    );
+    return new Date(date)
+      .toLocaleDateString(
+        "id-ID",
+        {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }
+      );
   };
 
   /* =========================
-     HANDLE IMAGE URL
+     IMAGE URL
   ========================= */
 
   const getImageUrl = (img) => {
@@ -65,127 +58,59 @@ export default function NewsDetail() {
       return img;
     }
 
-    // path uploads
+    // /uploads/news/xxx.png
     if (img.startsWith("/uploads")) {
       return `${API_URL}${img}`;
     }
 
-    return `${API_URL}/uploads/${img}`;
+    // fallback
+    return `${API_URL}/uploads/news/${img}`;
   };
 
   /* =========================
-     FETCH DETAIL
-  ========================= */
-
-  const fetchDetail =
-    useCallback(async () => {
-      try {
-        if (!id) return;
-
-        const response = await fetch(
-          `${API_URL}/api/news/${id}`
-        );
-
-        const data =
-          await response.json();
-
-        console.log(
-          "DETAIL RESPONSE:",
-          data
-        );
-
-        if (!response.ok) {
-          throw new Error(
-            data.message ||
-              "News tidak ditemukan"
-          );
-        }
-
-        // support multiple API format
-        const newsData =
-          data.data || data;
-
-        setNews(newsData);
-      } catch (err) {
-        console.error(
-          "DETAIL ERROR:",
-          err
-        );
-
-        setError(
-          err.message ||
-            "Gagal memuat detail news"
-        );
-      }
-    }, [id]);
-
-  /* =========================
-     FETCH LATEST
-  ========================= */
-
-  const fetchLatest =
-    useCallback(async () => {
-      try {
-        const response = await fetch(
-          `${API_URL}/api/news`
-        );
-
-        const data =
-          await response.json();
-
-        console.log(
-          "LATEST RESPONSE:",
-          data
-        );
-
-        // support multiple API format
-        const newsArray =
-          data.data || data;
-
-        if (
-          !Array.isArray(newsArray)
-        ) {
-          setLatestNews([]);
-          return;
-        }
-
-        const filtered =
-          newsArray.filter(
-            (item) =>
-              Number(item.id) !==
-              Number(id)
-          );
-
-        setLatestNews(
-          filtered.slice(0, 5)
-        );
-      } catch (err) {
-        console.error(
-          "LATEST ERROR:",
-          err
-        );
-      }
-    }, [id]);
-
-  /* =========================
-     USE EFFECT
+     FETCH NEWS
   ========================= */
 
   useEffect(() => {
-    const fetchAll =
+    const fetchNews =
       async () => {
-        setLoading(true);
+        try {
+          const response =
+            await fetch(
+              `${API_URL}/api/news/published`
+            );
 
-        await Promise.all([
-          fetchDetail(),
-          fetchLatest(),
-        ]);
+          const data =
+            await response.json();
 
-        setLoading(false);
+          console.log(
+            "NEWS:",
+            data
+          );
+
+          // support multiple format
+          const newsData =
+            data.data || data;
+
+          if (
+            Array.isArray(newsData)
+          ) {
+            setNews(newsData);
+          } else {
+            setNews([]);
+          }
+        } catch (err) {
+          console.error(
+            "NEWS ERROR:",
+            err
+          );
+        } finally {
+          setLoading(false);
+        }
       };
 
-    fetchAll();
-  }, [fetchDetail, fetchLatest]);
+    fetchNews();
+  }, []);
 
   /* =========================
      LOADING
@@ -193,172 +118,88 @@ export default function NewsDetail() {
 
   if (loading) {
     return (
-      <div className="text-center p-10">
+      <div className="text-center py-10">
         Loading...
       </div>
     );
   }
 
-  /* =========================
-     ERROR
-  ========================= */
-
-  if (error) {
-    return (
-      <div className="text-center p-10 text-red-500">
-        {error}
-      </div>
-    );
-  }
-
-  /* =========================
-     NOT FOUND
-  ========================= */
-
-  if (!news) {
-    return (
-      <div className="text-center p-10">
-        News tidak ditemukan
-      </div>
-    );
-  }
-
   return (
-    <div className="bg-gray-100 min-h-screen py-8 px-4">
-      <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-6">
+    <section
+      id="news"
+      className="py-16 bg-gray-100"
+    >
+      <div className="max-w-7xl mx-auto px-4">
 
-        {/* MAIN CONTENT */}
+        {/* TITLE */}
 
-        <div className="md:col-span-2 bg-white rounded-2xl shadow p-6">
+        <h2 className="text-4xl font-bold text-center text-green-700 mb-12">
+          RECENT NEWS
+        </h2>
 
-          {/* BACK BUTTON */}
+        {/* EMPTY */}
 
-          <button
-            onClick={() =>
-              navigate("/")
-            }
-            className="text-green-600 mb-5 hover:underline"
-          >
-            ← Back
-          </button>
-
-          {/* IMAGE */}
-
-          <img
-            src={getImageUrl(
-              news.image
-            )}
-            alt={
-              news.title ||
-              "news image"
-            }
-            className="w-full h-[400px] object-cover rounded-xl mb-5"
-            onError={(e) => {
-              e.target.src =
-                noImage;
-            }}
-          />
-
-          {/* TITLE */}
-
-          <h1 className="text-3xl font-bold mb-3">
-            {news.title}
-          </h1>
-
-          {/* META */}
-
-          <p className="text-gray-500 text-sm mb-6">
-            {formatDate(
-              news.created_at
-            )}{" "}
-            • Admin
+        {news.length === 0 ? (
+          <p className="text-center text-gray-500">
+            News tidak ditemukan
           </p>
+        ) : (
+          <div className="grid md:grid-cols-3 gap-8">
 
-          {/* CONTENT */}
+            {news.map((item) => (
+              <div
+                key={item.id}
+                className="bg-white rounded-2xl shadow hover:shadow-lg transition overflow-hidden cursor-pointer"
+                onClick={() =>
+                  navigate(
+                    `/news/${item.id}`
+                  )
+                }
+              >
 
-          <div className="text-gray-700 leading-relaxed whitespace-pre-line">
-            {news.content}
+                {/* IMAGE */}
+
+                <img
+                  src={getImageUrl(
+                    item.image
+                  )}
+                  alt={
+                    item.title
+                  }
+                  className="w-full h-56 object-cover"
+                  onError={(e) => {
+                    e.target.src =
+                      noImage;
+                  }}
+                />
+
+                {/* CONTENT */}
+
+                <div className="p-5">
+
+                  <p className="text-sm text-gray-400 mb-2">
+                    {formatDate(
+                      item.created_at
+                    )}
+                  </p>
+
+                  <h3 className="text-xl font-bold mb-3 line-clamp-2">
+                    {item.title}
+                  </h3>
+
+                  <p className="text-gray-600 line-clamp-3">
+                    {item.content}
+                  </p>
+
+                  <button className="mt-5 text-green-700 font-semibold hover:underline">
+                    Read More →
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
-
-        {/* SIDEBAR */}
-
-        <div className="space-y-5">
-
-          {/* LATEST NEWS */}
-
-          <div className="bg-white rounded-2xl shadow p-5">
-
-            <h2 className="text-xl font-bold mb-4 border-b pb-2">
-              Latest News
-            </h2>
-
-            {latestNews.length ===
-            0 ? (
-              <p className="text-gray-400 text-sm">
-                Tidak ada news
-              </p>
-            ) : (
-              latestNews.map(
-                (item) => (
-                  <div
-                    key={item.id}
-                    onClick={() =>
-                      navigate(
-                        `/news/${item.id}`
-                      )
-                    }
-                    className="flex gap-3 mb-4 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition"
-                  >
-
-                    {/* IMAGE */}
-
-                    <img
-                      src={getImageUrl(
-                        item.image
-                      )}
-                      alt={
-                        item.title ||
-                        "news"
-                      }
-                      className="w-24 h-20 object-cover rounded-lg"
-                      onError={(
-                        e
-                      ) => {
-                        e.target.src =
-                          noImage;
-                      }}
-                    />
-
-                    {/* CONTENT */}
-
-                    <div className="flex-1">
-
-                      <p className="font-semibold text-sm line-clamp-2">
-                        {
-                          item.title
-                        }
-                      </p>
-
-                      <p className="text-xs text-gray-400 mt-1">
-                        {formatDate(
-                          item.created_at
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                )
-              )
-            )}
-          </div>
-
-          {/* WIDGET */}
-
-          <div className="bg-white rounded-2xl shadow p-6 text-center text-gray-400">
-            Advertisement / Widget Space
-          </div>
-        </div>
+        )}
       </div>
-    </div>
+    </section>
   );
 }
