@@ -2,72 +2,64 @@ import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 
 import {
-  createHero,
-  deleteHero,
-  getHeroAdmin,
+  getAimsAdmin,
+  createAim,
+  updateAim,
+  deleteAim,
   resolveImage,
-  updateHero,
 } from "../../services/homepageService";
 
-export default function HeroSliderManagement() {
+export default function AimsManagement() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   const [editId, setEditId] = useState(null);
+  const [currentImage, setCurrentImage] = useState("");
 
   const [form, setForm] = useState({
     file: null,
-    caption: "",
+    content: "",
     order_number: 1,
     is_active: 1,
   });
 
-  const [currentImage, setCurrentImage] = useState("");
-
   /* =========================
-     RESET
+     RESET FORM
   ========================= */
 
-  const reset = () => {
+  const resetForm = () => {
     setEditId(null);
-
     setCurrentImage("");
 
     setForm({
       file: null,
-      caption: "",
+      content: "",
       order_number: 1,
       is_active: 1,
     });
   };
 
   /* =========================
-     LOAD HERO
+     LOAD DATA
   ========================= */
 
-  const load = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
 
-      const data = await getHeroAdmin();
+      const res = await getAimsAdmin();
 
-      console.log("HERO ADMIN:", data);
+      console.log("AIMS DATA:", res);
 
-      // support berbagai bentuk response
-      if (Array.isArray(data)) {
-        setRows(data);
-      } else if (Array.isArray(data?.data)) {
-        setRows(data.data);
-      } else {
-        setRows([]);
-      }
-    } catch (e) {
-      console.error("LOAD HERO ERROR:", e);
+      // karena service sudah return response.data
+      setRows(Array.isArray(res) ? res : []);
+    } catch (err) {
+      console.error("LOAD AIMS ERROR:", err);
 
       Swal.fire(
         "Error",
-        e?.response?.data?.message || "Gagal load hero",
+        err?.response?.data?.message || "Gagal memuat aims",
         "error"
       );
     } finally {
@@ -76,35 +68,34 @@ export default function HeroSliderManagement() {
   };
 
   useEffect(() => {
-    load();
+    loadData();
   }, []);
 
   /* =========================
-     INPUT CHANGE
+     HANDLE INPUT
   ========================= */
 
   const onChange = (e) => {
     const { name, value } = e.target;
 
-    setForm((p) => ({
-      ...p,
+    setForm((prev) => ({
+      ...prev,
       [name]:
-        name === "order_number" ||
-        name === "is_active"
+        name === "order_number" || name === "is_active"
           ? Number(value)
           : value,
     }));
   };
 
   /* =========================
-     FILE CHANGE
+     HANDLE FILE
   ========================= */
 
   const onFileChange = (e) => {
     const file = e.target.files?.[0] || null;
 
-    setForm((p) => ({
-      ...p,
+    setForm((prev) => ({
+      ...prev,
       file,
     }));
   };
@@ -120,14 +111,19 @@ export default function HeroSliderManagement() {
 
     setForm({
       file: null,
-      caption: item.caption || "",
+      content: item.content || "",
       order_number: item.order_number || 1,
       is_active: Number(item.is_active ?? 1),
+    });
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
     });
   };
 
   /* =========================
-     PREVIEW
+     PREVIEW IMAGE
   ========================= */
 
   const previewUrl = useMemo(() => {
@@ -149,10 +145,10 @@ export default function HeroSliderManagement() {
   const onSubmit = async (e) => {
     e.preventDefault();
 
-    if (!editId && !form.file) {
+    if (!form.content.trim()) {
       return Swal.fire(
         "Error",
-        "Image wajib diupload",
+        "Content wajib diisi",
         "error"
       );
     }
@@ -162,11 +158,7 @@ export default function HeroSliderManagement() {
 
       const fd = new FormData();
 
-      if (form.file) {
-        fd.append("image", form.file);
-      }
-
-      fd.append("caption", form.caption || "");
+      fd.append("content", form.content);
 
       fd.append(
         "order_number",
@@ -178,36 +170,52 @@ export default function HeroSliderManagement() {
         String(form.is_active ?? 1)
       );
 
+      if (form.file) {
+        fd.append("image", form.file);
+      }
+
+      /* =========================
+         UPDATE
+      ========================= */
+
       if (editId) {
-        await updateHero(editId, fd);
+        await updateAim(editId, fd);
 
         Swal.fire({
           icon: "success",
-          title: "Hero updated",
-          timer: 1200,
-          showConfirmButton: false,
-        });
-      } else {
-        await createHero(fd);
-
-        Swal.fire({
-          icon: "success",
-          title: "Hero created",
-          timer: 1200,
+          title: "Berhasil",
+          text: "Aim berhasil diupdate",
+          timer: 1400,
           showConfirmButton: false,
         });
       }
 
-      reset();
+      /* =========================
+         CREATE
+      ========================= */
 
-      load();
-    } catch (e2) {
-      console.error("SAVE HERO ERROR:", e2);
+      else {
+        await createAim(fd);
+
+        Swal.fire({
+          icon: "success",
+          title: "Berhasil",
+          text: "Aim berhasil ditambahkan",
+          timer: 1400,
+          showConfirmButton: false,
+        });
+      }
+
+      resetForm();
+
+      await loadData();
+    } catch (err) {
+      console.error("SUBMIT ERROR:", err);
 
       Swal.fire(
         "Error",
-        e2?.response?.data?.message ||
-          "Gagal simpan hero",
+        err?.response?.data?.message ||
+          "Gagal menyimpan aim",
         "error"
       );
     } finally {
@@ -220,36 +228,35 @@ export default function HeroSliderManagement() {
   ========================= */
 
   const onDelete = async (id) => {
-    const confirm = await Swal.fire({
-      title: "Hapus hero?",
-      text: "Data akan dihapus permanen",
+    const result = await Swal.fire({
+      title: "Hapus aim?",
+      text: "Data yang dihapus tidak bisa dikembalikan.",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Ya",
+      confirmButtonText: "Ya, hapus",
       cancelButtonText: "Batal",
+      confirmButtonColor: "#d33",
     });
 
-    if (!confirm.isConfirmed) {
-      return;
-    }
+    if (!result.isConfirmed) return;
 
     try {
-      await deleteHero(id);
+      await deleteAim(id);
 
       Swal.fire(
         "Berhasil",
-        "Hero berhasil dihapus",
+        "Aim berhasil dihapus",
         "success"
       );
 
-      load();
-    } catch (e) {
-      console.error("DELETE HERO ERROR:", e);
+      await loadData();
+    } catch (err) {
+      console.error("DELETE ERROR:", err);
 
       Swal.fire(
         "Error",
-        e?.response?.data?.message ||
-          "Gagal hapus hero",
+        err?.response?.data?.message ||
+          "Gagal menghapus aim",
         "error"
       );
     }
@@ -260,24 +267,23 @@ export default function HeroSliderManagement() {
   ========================= */
 
   return (
-    <div className="max-w-5xl mx-auto p-6">
-
+    <div className="max-w-6xl mx-auto p-6">
       {/* HEADER */}
 
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-extrabold text-[#1e9c2d]">
-            Hero Slider
+            Aims Management
           </h1>
 
           <p className="text-gray-500">
-            Kelola gambar slider homepage
+            Kelola aims beserta gambar pada homepage.
           </p>
         </div>
 
         <button
-          onClick={load}
-          className="px-4 py-2 border rounded-xl hover:bg-gray-50"
+          onClick={loadData}
+          className="px-4 py-2 rounded-xl border hover:bg-gray-50"
         >
           Refresh
         </button>
@@ -287,11 +293,10 @@ export default function HeroSliderManagement() {
 
       <form
         onSubmit={onSubmit}
-        className="bg-white border rounded-2xl p-5 shadow-sm mb-8"
+        className="bg-white border rounded-2xl p-5 shadow-sm mb-8 space-y-4"
       >
-        <div className="grid md:grid-cols-2 gap-4">
-
-          {/* LEFT */}
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* IMAGE */}
 
           <div>
             <label className="text-sm font-medium">
@@ -305,36 +310,50 @@ export default function HeroSliderManagement() {
               className="w-full border rounded-xl px-3 py-2 mt-1"
             />
 
+            {/* PREVIEW */}
+
             {previewUrl && (
               <div className="mt-3 border rounded-xl overflow-hidden">
                 <img
                   src={previewUrl}
                   alt="preview"
-                  className="w-full h-44 object-cover"
+                  className="w-full h-56 object-cover"
                 />
               </div>
             )}
+
+            {editId &&
+              !form.file &&
+              currentImage && (
+                <div className="mt-2 text-xs text-gray-500">
+                  Gambar saat ini: {currentImage}
+                </div>
+              )}
           </div>
 
-          {/* RIGHT */}
+          {/* RIGHT FORM */}
 
           <div className="space-y-4">
+            {/* CONTENT */}
 
             <div>
               <label className="text-sm font-medium">
-                Caption
+                Content
               </label>
 
-              <input
-                name="caption"
-                value={form.caption}
+              <textarea
+                name="content"
+                value={form.content}
                 onChange={onChange}
-                className="w-full border rounded-xl px-3 py-2 mt-1"
+                rows={7}
+                className="w-full border rounded-xl px-3 py-2 mt-1 focus:outline-none focus:ring-2 focus:ring-[#1e9c2d]"
+                placeholder="Masukkan isi aims..."
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            {/* ORDER + STATUS */}
 
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-sm font-medium">
                   Order
@@ -345,6 +364,7 @@ export default function HeroSliderManagement() {
                   name="order_number"
                   value={form.order_number}
                   onChange={onChange}
+                  min={1}
                   className="w-full border rounded-xl px-3 py-2 mt-1"
                 />
               </div>
@@ -358,20 +378,26 @@ export default function HeroSliderManagement() {
                   name="is_active"
                   value={form.is_active}
                   onChange={onChange}
-                  className="w-full border rounded-xl px-3 py-2 mt-1"
+                  className="w-full border rounded-xl px-3 py-2 mt-1 bg-white"
                 >
-                  <option value={1}>Active</option>
-                  <option value={0}>Inactive</option>
+                  <option value={1}>
+                    Active
+                  </option>
+
+                  <option value={0}>
+                    Inactive
+                  </option>
                 </select>
               </div>
-
             </div>
 
-            <div className="flex gap-2">
+            {/* BUTTON */}
 
+            <div className="flex gap-2">
               <button
+                type="submit"
                 disabled={submitting}
-                className="bg-[#1e9c2d] text-white px-4 py-2 rounded-xl"
+                className="bg-[#1e9c2d] text-white px-4 py-2 rounded-xl disabled:opacity-60"
               >
                 {submitting
                   ? "Menyimpan..."
@@ -383,74 +409,109 @@ export default function HeroSliderManagement() {
               {editId && (
                 <button
                   type="button"
-                  onClick={reset}
-                  className="border px-4 py-2 rounded-xl"
+                  onClick={resetForm}
+                  className="px-4 py-2 rounded-xl border"
                 >
                   Batal
                 </button>
               )}
-
             </div>
-
           </div>
-
         </div>
       </form>
 
       {/* LIST */}
 
       {loading ? (
-        <div>Loading...</div>
+        <div className="text-gray-500">
+          Loading...
+        </div>
       ) : rows.length === 0 ? (
-        <div>Belum ada hero.</div>
+        <div className="text-gray-500">
+          Belum ada data aims.
+        </div>
       ) : (
         <div className="grid md:grid-cols-2 gap-4">
-
-          {rows.map((hero) => (
+          {rows.map((item) => (
             <div
-              key={hero.id}
+              key={item.id}
               className="bg-white border rounded-2xl overflow-hidden shadow-sm"
             >
+              {/* IMAGE */}
 
-              <img
-                src={resolveImage(hero.image)}
-                alt="hero"
-                className="w-full h-44 object-cover"
-              />
+              {item.image ? (
+                <img
+                  src={resolveImage(item.image)}
+                  alt="aim"
+                  className="w-full h-52 object-cover"
+                />
+              ) : (
+                <div className="w-full h-52 bg-gray-100 flex items-center justify-center text-gray-400">
+                  No Image
+                </div>
+              )}
+
+              {/* CONTENT */}
 
               <div className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <div className="text-sm text-gray-800 whitespace-pre-line line-clamp-5">
+                      {item.content}
+                    </div>
 
-                <div className="font-semibold">
-                  {hero.caption || "No caption"}
+                    <div className="text-xs text-gray-500 mt-2">
+                      order: {item.order_number}
+                      {" • "}
+                      status:
+                      <span
+                        className={
+                          item.is_active
+                            ? "text-[#1e9c2d]"
+                            : "text-gray-400"
+                        }
+                      >
+                        {" "}
+                        {item.is_active
+                          ? "active"
+                          : "inactive"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* ACTION */}
+
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={() =>
+                        onEdit(item)
+                      }
+                      className="text-sm text-blue-600 hover:underline"
+                    >
+                      Edit
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        onDelete(item.id)
+                      }
+                      className="text-sm text-red-600 hover:underline"
+                    >
+                      Hapus
+                    </button>
+                  </div>
                 </div>
 
-                <div className="text-xs text-gray-500 mt-1">
-                  order: {hero.order_number}
-                </div>
+                {/* IMAGE PATH */}
 
-                <div className="flex gap-3 mt-3">
-
-                  <button
-                    onClick={() => onEdit(hero)}
-                    className="text-blue-600 text-sm"
-                  >
-                    Edit
-                  </button>
-
-                  <button
-                    onClick={() => onDelete(hero.id)}
-                    className="text-red-600 text-sm"
-                  >
-                    Hapus
-                  </button>
-
-                </div>
-
+                {item.image && (
+                  <div className="mt-2 text-xs text-gray-500 break-all">
+                    {item.image}
+                  </div>
+                )}
               </div>
-
             </div>
           ))}
-
         </div>
       )}
     </div>
