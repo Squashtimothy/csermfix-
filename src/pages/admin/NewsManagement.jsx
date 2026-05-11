@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
-const API_BASE =
+const API_BASE = (
   process.env.REACT_APP_API_URL ||
-  "https://resilient-balance-production-57f8.up.railway.app";
+  "https://resilient-balance-production-57f8.up.railway.app"
+).replace(/\/$/, "");
 
 /* =========================================
    RESOLVE IMAGE
@@ -21,7 +22,7 @@ const resolveImage = (image) => {
     return image;
   }
 
-  // FIX PATH IMAGE
+  // image local uploads
   return `${API_BASE}/uploads/${image}`;
 };
 
@@ -33,8 +34,10 @@ export default function NewsManagement() {
   const [status, setStatus] = useState("published");
   const [image, setImage] = useState(null);
 
+  const [loading, setLoading] = useState(false);
+
   /* =========================================
-     LOAD NEWS
+     FETCH NEWS
   ========================================= */
 
   const fetchNews = async () => {
@@ -50,11 +53,25 @@ export default function NewsManagement() {
         }
       );
 
-      console.log("NEWS:", response.data);
+      console.log("NEWS RESPONSE:", response.data);
 
-      setNews(response.data || []);
+      // FIX AGAR TIDAK MAP ERROR
+      let result = [];
+
+      if (Array.isArray(response.data)) {
+        result = response.data;
+      } else if (
+        response.data &&
+        Array.isArray(response.data.data)
+      ) {
+        result = response.data.data;
+      }
+
+      setNews(result);
     } catch (err) {
       console.error("LOAD NEWS ERROR:", err);
+
+      setNews([]);
     }
   };
 
@@ -66,6 +83,8 @@ export default function NewsManagement() {
     e.preventDefault();
 
     try {
+      setLoading(true);
+
       const token = localStorage.getItem("token");
 
       const formData = new FormData();
@@ -84,24 +103,32 @@ export default function NewsManagement() {
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
+            "Content-Type":
+              "multipart/form-data",
           },
         }
       );
 
+      // reset form
       setTitle("");
       setContent("");
       setStatus("published");
       setImage(null);
 
+      // reload data
       fetchNews();
     } catch (err) {
-      console.error("CREATE NEWS ERROR:", err);
+      console.error(
+        "CREATE NEWS ERROR:",
+        err
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
   /* =========================================
-     DELETE
+     DELETE NEWS
   ========================================= */
 
   const handleDelete = async (id) => {
@@ -119,12 +146,15 @@ export default function NewsManagement() {
 
       fetchNews();
     } catch (err) {
-      console.error("DELETE ERROR:", err);
+      console.error(
+        "DELETE NEWS ERROR:",
+        err
+      );
     }
   };
 
   /* =========================================
-     STATUS
+     TOGGLE STATUS
   ========================================= */
 
   const toggleStatus = async (item) => {
@@ -150,16 +180,27 @@ export default function NewsManagement() {
 
       fetchNews();
     } catch (err) {
-      console.error("STATUS ERROR:", err);
+      console.error(
+        "STATUS UPDATE ERROR:",
+        err
+      );
     }
   };
+
+  /* =========================================
+     LOAD
+  ========================================= */
 
   useEffect(() => {
     fetchNews();
   }, []);
 
   return (
-    <div className="max-w-5xl mx-auto p-6">
+    <div className="max-w-6xl mx-auto p-6">
+      {/* =========================================
+          TITLE
+      ========================================= */}
+
       <h1 className="text-3xl font-bold mb-6">
         Kelola News
       </h1>
@@ -172,6 +213,7 @@ export default function NewsManagement() {
         onSubmit={handleSubmit}
         className="bg-white p-5 rounded shadow mb-8"
       >
+        {/* title */}
         <div className="mb-4">
           <input
             type="text"
@@ -185,11 +227,12 @@ export default function NewsManagement() {
           />
         </div>
 
+        {/* content */}
         <div className="mb-4">
           <textarea
             placeholder="Konten"
+            rows={5}
             className="w-full border p-3 rounded"
-            rows={4}
             value={content}
             onChange={(e) =>
               setContent(e.target.value)
@@ -198,6 +241,7 @@ export default function NewsManagement() {
           />
         </div>
 
+        {/* status */}
         <div className="mb-4">
           <select
             className="w-full border p-3 rounded"
@@ -216,6 +260,7 @@ export default function NewsManagement() {
           </select>
         </div>
 
+        {/* image */}
         <div className="mb-4">
           <input
             type="file"
@@ -226,11 +271,15 @@ export default function NewsManagement() {
           />
         </div>
 
+        {/* submit */}
         <button
           type="submit"
-          className="bg-blue-600 text-white px-5 py-2 rounded"
+          disabled={loading}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded"
         >
-          Tambah News
+          {loading
+            ? "Loading..."
+            : "Tambah News"}
         </button>
       </form>
 
@@ -239,66 +288,76 @@ export default function NewsManagement() {
       ========================================= */}
 
       <div className="space-y-5">
-        {news.map((item) => (
-          <div
-            key={item.id}
-            className="bg-white p-5 rounded shadow"
-          >
-            <h2 className="text-2xl font-bold">
-              {item.title}
-            </h2>
-
-            <p className="text-gray-600 mb-3">
-              {item.content}
-            </p>
-
-            {/* =========================================
-                IMAGE FIX
-            ========================================= */}
-
-            <img
-              src={resolveImage(item.image)}
-              alt={item.title}
-              className="w-52 h-32 object-cover rounded border mb-3"
-              onError={(e) => {
-                e.target.src =
-                  "https://via.placeholder.com/400x200?text=No+Image";
-              }}
-            />
-
-            <span
-              className={`inline-block px-3 py-1 rounded text-sm mb-3 ${
-                item.status === "published"
-                  ? "bg-green-100 text-green-700"
-                  : "bg-yellow-100 text-yellow-700"
-              }`}
+        {Array.isArray(news) &&
+        news.length > 0 ? (
+          news.map((item) => (
+            <div
+              key={item.id}
+              className="bg-white p-5 rounded shadow"
             >
-              {item.status}
-            </span>
+              {/* title */}
+              <h2 className="text-2xl font-bold mb-2">
+                {item.title}
+              </h2>
 
-            <div className="flex gap-4">
-              <button
-                onClick={() =>
-                  toggleStatus(item)
-                }
-                className="text-orange-500"
-              >
-                {item.status === "published"
-                  ? "Jadikan Draft"
-                  : "Publish"}
-              </button>
+              {/* content */}
+              <p className="text-gray-600 mb-3">
+                {item.content}
+              </p>
 
-              <button
-                onClick={() =>
-                  handleDelete(item.id)
-                }
-                className="text-red-500"
+              {/* image */}
+              <img
+                src={resolveImage(item.image)}
+                alt={item.title}
+                className="w-52 h-32 object-cover rounded border mb-3"
+                onError={(e) => {
+                  e.target.src =
+                    "https://via.placeholder.com/400x200?text=No+Image";
+                }}
+              />
+
+              {/* status */}
+              <span
+                className={`inline-block px-3 py-1 rounded text-sm mb-3 ${
+                  item.status ===
+                  "published"
+                    ? "bg-green-100 text-green-700"
+                    : "bg-yellow-100 text-yellow-700"
+                }`}
               >
-                Hapus
-              </button>
+                {item.status}
+              </span>
+
+              {/* actions */}
+              <div className="flex gap-4">
+                <button
+                  onClick={() =>
+                    toggleStatus(item)
+                  }
+                  className="text-orange-500"
+                >
+                  {item.status ===
+                  "published"
+                    ? "Jadikan Draft"
+                    : "Publish"}
+                </button>
+
+                <button
+                  onClick={() =>
+                    handleDelete(item.id)
+                  }
+                  className="text-red-500"
+                >
+                  Hapus
+                </button>
+              </div>
             </div>
+          ))
+        ) : (
+          <div className="text-gray-500">
+            Belum ada news
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
