@@ -12,36 +12,42 @@ const {
 const upload = require("../middleware/upload");
 
 /* =========================
-   PUBLIC ROUTES
+   TEST ROUTE
 ========================= */
 
-// GET ALL
-router.get(
-  "/",
-  newsController.getAll
-);
-
-// GET PUBLISHED ONLY
-router.get(
-  "/published",
-  (req, res) => {
-    req.query.status = "published";
-
-    newsController.getAll(req, res);
-  }
-);
-
-// GET DETAIL
-router.get(
-  "/:id",
-  newsController.getById
-);
+router.post("/test", (req, res) => {
+  return res.json({
+    success: true,
+    message: "POST ROUTE WORKING",
+  });
+});
 
 /* =========================
-   ADMIN ROUTES
+   GET ALL
 ========================= */
 
-// CREATE
+router.get("/", newsController.getAll);
+
+/* =========================
+   GET PUBLISHED
+========================= */
+
+router.get("/published", (req, res) => {
+  req.query.status = "published";
+
+  return newsController.getAll(req, res);
+});
+
+/* =========================
+   GET BY ID
+========================= */
+
+router.get("/:id", newsController.getById);
+
+/* =========================
+   CREATE NEWS
+========================= */
+
 router.post(
   "/",
   verifyToken,
@@ -50,7 +56,10 @@ router.post(
   newsController.create
 );
 
-// UPDATE FULL
+/* =========================
+   UPDATE NEWS
+========================= */
+
 router.put(
   "/:id",
   verifyToken,
@@ -59,15 +68,52 @@ router.put(
   newsController.update
 );
 
-// UPDATE STATUS ONLY
+/* =========================
+   UPDATE STATUS
+========================= */
+
 router.patch(
   "/:id/status",
   verifyToken,
   isAdmin,
-  newsController.updateStatus
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+
+      console.log("STATUS UPDATE:", id, status);
+
+      if (!status) {
+        return res.status(400).json({
+          message: "Status wajib diisi",
+        });
+      }
+
+      const db = require("../config/db");
+
+      await db.query(
+        "UPDATE news SET status=? WHERE id=?",
+        [status, id]
+      );
+
+      return res.json({
+        success: true,
+        message: "Status berhasil diupdate",
+      });
+    } catch (err) {
+      console.error(err);
+
+      return res.status(500).json({
+        message: "Server error",
+      });
+    }
+  }
 );
 
-// DELETE
+/* =========================
+   DELETE NEWS
+========================= */
+
 router.delete(
   "/:id",
   verifyToken,
