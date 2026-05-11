@@ -1,38 +1,69 @@
 const express = require("express");
+
 const router = express.Router();
 
-const newsController = require("../controllers/newsController");
+/* =========================
+   CONTROLLER
+========================= */
+
+const newsController = require(
+  "../controllers/newsController"
+);
+
+/* =========================
+   MIDDLEWARE
+========================= */
 
 const {
   verifyToken,
   isAdmin,
-} = require("../middleware/authMiddleware");
+} = require(
+  "../middleware/authMiddleware"
+);
 
-const upload = require("../middleware/upload");
+const upload = require(
+  "../middleware/upload"
+);
 
-/* =========================
-   PUBLIC
-========================= */
+/* =====================================================
+   PUBLIC ROUTES
+===================================================== */
 
+/**
+ * GET ALL NEWS
+ * GET /api/news
+ */
 router.get(
   "/",
   newsController.getAll
 );
 
+/**
+ * GET PUBLISHED NEWS
+ * GET /api/news/published
+ */
 router.get(
   "/published",
   newsController.getPublished
 );
 
+/**
+ * GET DETAIL NEWS
+ * GET /api/news/:id
+ */
 router.get(
   "/:id",
   newsController.getById
 );
 
-/* =========================
-   ADMIN
-========================= */
+/* =====================================================
+   ADMIN ROUTES
+===================================================== */
 
+/**
+ * CREATE NEWS
+ * POST /api/news
+ */
 router.post(
   "/",
   verifyToken,
@@ -41,6 +72,10 @@ router.post(
   newsController.create
 );
 
+/**
+ * UPDATE NEWS
+ * PUT /api/news/:id
+ */
 router.put(
   "/:id",
   verifyToken,
@@ -49,6 +84,10 @@ router.put(
   newsController.update
 );
 
+/**
+ * UPDATE STATUS
+ * PATCH /api/news/:id/status
+ */
 router.patch(
   "/:id/status",
   verifyToken,
@@ -56,11 +95,19 @@ router.patch(
   newsController.updateStatus
 );
 
+/**
+ * DELETE NEWS
+ * DELETE /api/news/:id
+ */
 router.delete(
   "/:id",
   verifyToken,
   isAdmin,
   newsController.remove
 );
+
+/* =====================================================
+   EXPORT
+===================================================== */
 
 module.exports = router;
