@@ -4,8 +4,9 @@ import {
   createNews,
   updateNews,
   deleteNews,
-  updateNewsStatus, // ✅ TAMBAH INI
+  updateNewsStatus,
 } from "../../services/newsService";
+
 import Swal from "sweetalert2";
 
 export default function NewsManagement() {
@@ -18,21 +19,41 @@ export default function NewsManagement() {
     title: "",
     content: "",
     image: null,
-    status: "published", // ✅ TAMBAH
+    status: "published",
   });
 
   const [fileKey, setFileKey] = useState(Date.now());
 
-  // ======================
-  // LOAD DATA
-  // ======================
+  /* ======================
+     LOAD DATA
+  ====================== */
+
   const loadData = async () => {
     try {
       setLoading(true);
+
       const res = await getNews();
-      setNews(res.data || []);
+
+      console.log("NEWS RESPONSE:", res.data);
+
+      // HANDLE ARRAY / OBJECT
+      const data = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data?.data)
+        ? res.data.data
+        : [];
+
+      setNews(data);
     } catch (err) {
-      Swal.fire("Error", "Gagal mengambil data news", "error");
+      console.error(err);
+
+      Swal.fire(
+        "Error",
+        "Gagal mengambil data news",
+        "error"
+      );
+
+      setNews([]);
     } finally {
       setLoading(false);
     }
@@ -42,9 +63,10 @@ export default function NewsManagement() {
     loadData();
   }, []);
 
-  // ======================
-  // HANDLE FORM
-  // ======================
+  /* ======================
+     HANDLE FORM
+  ====================== */
+
   const handleChange = (e) => {
     const { name, value, files } = e.target;
 
@@ -54,9 +76,10 @@ export default function NewsManagement() {
     }));
   };
 
-  // ======================
-  // SUBMIT
-  // ======================
+  /* ======================
+     SUBMIT
+  ====================== */
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -64,9 +87,10 @@ export default function NewsManagement() {
       setSubmitting(true);
 
       const data = new FormData();
+
       data.append("title", form.title);
       data.append("content", form.content);
-      data.append("status", form.status); // ✅ TAMBAH
+      data.append("status", form.status);
 
       if (form.image) {
         data.append("image", form.image);
@@ -74,24 +98,41 @@ export default function NewsManagement() {
 
       if (editId) {
         await updateNews(editId, data);
-        Swal.fire("Berhasil", "News berhasil diupdate", "success");
+
+        Swal.fire(
+          "Berhasil",
+          "News berhasil diupdate",
+          "success"
+        );
       } else {
         await createNews(data);
-        Swal.fire("Berhasil", "News berhasil ditambahkan", "success");
+
+        Swal.fire(
+          "Berhasil",
+          "News berhasil ditambahkan",
+          "success"
+        );
       }
 
       resetForm();
       loadData();
     } catch (err) {
-      Swal.fire("Error", "Gagal menyimpan news", "error");
+      console.error(err);
+
+      Swal.fire(
+        "Error",
+        "Gagal menyimpan news",
+        "error"
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
-  // ======================
-  // DELETE
-  // ======================
+  /* ======================
+     DELETE
+  ====================== */
+
   const handleDelete = async (id) => {
     const result = await Swal.fire({
       title: "Yakin ingin menghapus?",
@@ -100,50 +141,83 @@ export default function NewsManagement() {
     });
 
     if (result.isConfirmed) {
-      await deleteNews(id);
-      Swal.fire("Terhapus!", "", "success");
-      loadData();
+      try {
+        await deleteNews(id);
+
+        Swal.fire(
+          "Berhasil",
+          "News berhasil dihapus",
+          "success"
+        );
+
+        loadData();
+      } catch (err) {
+        console.error(err);
+
+        Swal.fire(
+          "Error",
+          "Gagal menghapus news",
+          "error"
+        );
+      }
     }
   };
 
-  // ======================
-  // EDIT
-  // ======================
+  /* ======================
+     EDIT
+  ====================== */
+
   const handleEdit = (item) => {
     setEditId(item.id);
+
     setForm({
-      title: item.title,
-      content: item.content,
+      title: item.title || "",
+      content: item.content || "",
       image: null,
-      status: item.status || "published", // ✅ TAMBAH
+      status: item.status || "published",
     });
+
     setFileKey(Date.now());
   };
 
-  // ======================
-  // TOGGLE STATUS  
-  // ======================
+  /* ======================
+     TOGGLE STATUS
+  ====================== */
+
   const handleToggleStatus = async (item) => {
-    const newStatus = item.status === "published" ? "draft" : "published";
+    const newStatus =
+      item.status === "published"
+        ? "draft"
+        : "published";
 
     try {
-      await updateNewsStatus(item.id, newStatus);
+      await updateNewsStatus(
+        item.id,
+        newStatus
+      );
 
       Swal.fire(
         "Berhasil",
-        `News diubah ke ${newStatus}`,
+        `Status diubah ke ${newStatus}`,
         "success"
       );
 
       loadData();
-    } catch {
-      Swal.fire("Error", "Gagal update status", "error");
+    } catch (err) {
+      console.error(err);
+
+      Swal.fire(
+        "Error",
+        "Gagal update status",
+        "error"
+      );
     }
   };
 
-  // ======================
-  // RESET
-  // ======================
+  /* ======================
+     RESET
+  ====================== */
+
   const resetForm = () => {
     setForm({
       title: "",
@@ -151,16 +225,24 @@ export default function NewsManagement() {
       image: null,
       status: "published",
     });
+
     setEditId(null);
+
     setFileKey(Date.now());
   };
 
   return (
     <div className="max-w-4xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Kelola News</h1>
+      <h1 className="text-2xl font-bold mb-4">
+        Kelola News
+      </h1>
 
       {/* FORM */}
-      <form onSubmit={handleSubmit} className="space-y-3 mb-6">
+
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-3 mb-6"
+      >
         <input
           type="text"
           name="title"
@@ -181,23 +263,27 @@ export default function NewsManagement() {
           required
         />
 
-        {/* ✅ DROPDOWN STATUS */}
         <select
           name="status"
           value={form.status}
           onChange={handleChange}
           className="w-full border p-2 rounded"
         >
-          <option value="published">Publish</option>
-          <option value="draft">Draft</option>
+          <option value="published">
+            Publish
+          </option>
+
+          <option value="draft">
+            Draft
+          </option>
         </select>
 
         <input
           key={fileKey}
           type="file"
           name="image"
-          onChange={handleChange}
           accept="image/*"
+          onChange={handleChange}
         />
 
         <div className="flex gap-2">
@@ -206,14 +292,16 @@ export default function NewsManagement() {
             disabled={submitting}
             className="bg-blue-600 text-white px-4 py-2 rounded"
           >
-            {editId ? "Update News" : "Tambah News"}
+            {editId
+              ? "Update News"
+              : "Tambah News"}
           </button>
 
           {editId && (
             <button
               type="button"
               onClick={resetForm}
-              className="bg-gray-400 text-white px-4 py-2 rounded"
+              className="bg-gray-500 text-white px-4 py-2 rounded"
             >
               Batal
             </button>
@@ -221,16 +309,26 @@ export default function NewsManagement() {
         </div>
       </form>
 
-      {/* LIST NEWS */}
+      {/* LIST */}
+
       {loading ? (
         <p>Loading...</p>
+      ) : news.length === 0 ? (
+        <p>Tidak ada data news</p>
       ) : (
         news.map((n) => (
-          <div key={n.id} className="bg-white p-4 rounded shadow mb-3">
-            <h3 className="font-semibold">{n.title}</h3>
-            <p className="text-sm text-gray-600">{n.content}</p>
+          <div
+            key={n.id}
+            className="bg-white p-4 rounded shadow mb-3"
+          >
+            <h3 className="font-semibold">
+              {n.title}
+            </h3>
 
-            {/* ✅ STATUS BADGE */}
+            <p className="text-sm text-gray-600">
+              {n.content}
+            </p>
+
             <span
               className={`text-xs px-2 py-1 rounded ${
                 n.status === "draft"
@@ -256,9 +354,10 @@ export default function NewsManagement() {
                 Hapus
               </button>
 
-              {/*   TOGGLE BUTTON */}
               <button
-                onClick={() => handleToggleStatus(n)}
+                onClick={() =>
+                  handleToggleStatus(n)
+                }
                 className="text-yellow-600 text-sm"
               >
                 {n.status === "published"
