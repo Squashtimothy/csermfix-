@@ -1,8 +1,8 @@
 const db = require("../config/db");
 
-// =====================
-// GET semua news
-// =====================
+/* =====================
+   GET ALL NEWS
+===================== */
 exports.getAll = async (req, res) => {
   try {
     const { status } = req.query;
@@ -20,19 +20,21 @@ exports.getAll = async (req, res) => {
 
     const [rows] = await db.query(query, values);
 
-    res.json(rows);
+    return res.status(200).json(rows);
   } catch (err) {
     console.error("GET NEWS ERROR:", err);
 
-    res.status(500).json({
+    return res.status(500).json({
+      success: false,
       message: "Server error",
+      error: err.message,
     });
   }
 };
 
-// =====================
-// GET news by id
-// =====================
+/* =====================
+   GET NEWS BY ID
+===================== */
 exports.getById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -44,26 +46,31 @@ exports.getById = async (req, res) => {
 
     if (rows.length === 0) {
       return res.status(404).json({
+        success: false,
         message: "News tidak ditemukan",
       });
     }
 
-    res.json(rows[0]);
+    return res.status(200).json(rows[0]);
   } catch (err) {
     console.error("GET NEWS BY ID ERROR:", err);
 
-    res.status(500).json({
+    return res.status(500).json({
+      success: false,
       message: "Server error",
+      error: err.message,
     });
   }
 };
 
-// =====================
-// CREATE news
-// =====================
+/* =====================
+   CREATE NEWS
+===================== */
 exports.create = async (req, res) => {
   try {
-    console.log("CREATE BODY:", req.body);
+    console.log("========== CREATE NEWS ==========");
+    console.log("BODY:", req.body);
+    console.log("FILE:", req.file);
 
     const {
       title,
@@ -71,17 +78,23 @@ exports.create = async (req, res) => {
       status,
     } = req.body || {};
 
+    // VALIDASI
     if (!title || !content) {
       return res.status(400).json({
+        success: false,
         message: "Title dan content wajib diisi",
       });
     }
 
+    // IMAGE
     const image = req.file
       ? `news/${req.file.filename}`
       : null;
 
-    await db.query(
+    console.log("IMAGE:", image);
+
+    // INSERT DATABASE
+    const [result] = await db.query(
       `
       INSERT INTO news
       (
@@ -100,26 +113,30 @@ exports.create = async (req, res) => {
       ]
     );
 
-    res.json({
+    console.log("INSERT SUCCESS:", result);
+
+    return res.status(201).json({
+      success: true,
       message: "News berhasil ditambahkan",
+      id: result.insertId,
     });
   } catch (err) {
-  console.error("========== CREATE NEWS ERROR ==========");
-  console.error(err);
-  console.error("BODY:", req.body);
-  console.error("FILE:", req.file);
+    console.error("========== CREATE NEWS ERROR ==========");
+    console.error(err);
+    console.error("BODY:", req.body);
+    console.error("FILE:", req.file);
 
-  return res.status(500).json({
-    success: false,
-    message: "CREATE NEWS ERROR",
-    error: err.message,
-  });
-}
+    return res.status(500).json({
+      success: false,
+      message: "CREATE NEWS ERROR",
+      error: err.message,
+    });
+  }
 };
 
-// =====================
-// UPDATE news
-// =====================
+/* =====================
+   UPDATE NEWS
+===================== */
 exports.update = async (req, res) => {
   try {
     console.log("UPDATE BODY:", req.body);
@@ -134,6 +151,7 @@ exports.update = async (req, res) => {
 
     if (!id) {
       return res.status(400).json({
+        success: false,
         message: "ID tidak ditemukan",
       });
     }
@@ -171,8 +189,8 @@ exports.update = async (req, res) => {
 
     if (updates.length === 0) {
       return res.status(400).json({
-        message:
-          "Tidak ada data yang diupdate",
+        success: false,
+        message: "Tidak ada data yang diupdate",
       });
     }
 
@@ -185,28 +203,30 @@ exports.update = async (req, res) => {
 
     await db.query(query, values);
 
-    res.json({
+    return res.status(200).json({
+      success: true,
       message: "News berhasil diupdate",
     });
   } catch (err) {
     console.error("UPDATE NEWS ERROR:", err);
 
-    res.status(500).json({
-      message: err.message || "Server error",
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: err.message,
     });
   }
 };
 
-// =====================
-// UPDATE STATUS ONLY
-// =====================
+/* =====================
+   UPDATE STATUS ONLY
+===================== */
 exports.updateStatus = async (
   req,
   res
 ) => {
   try {
     const { id } = req.params;
-
     const { status } = req.body;
 
     console.log(
@@ -217,12 +237,14 @@ exports.updateStatus = async (
 
     if (!id) {
       return res.status(400).json({
+        success: false,
         message: "ID tidak ditemukan",
       });
     }
 
     if (!status) {
       return res.status(400).json({
+        success: false,
         message: "Status wajib diisi",
       });
     }
@@ -236,9 +258,9 @@ exports.updateStatus = async (
       [status, id]
     );
 
-    res.json({
-      message:
-        "Status news berhasil diupdate",
+    return res.status(200).json({
+      success: true,
+      message: "Status news berhasil diupdate",
     });
   } catch (err) {
     console.error(
@@ -246,21 +268,24 @@ exports.updateStatus = async (
       err
     );
 
-    res.status(500).json({
+    return res.status(500).json({
+      success: false,
       message: "Server error",
+      error: err.message,
     });
   }
 };
 
-// =====================
-// DELETE news
-// =====================
+/* =====================
+   DELETE NEWS
+===================== */
 exports.remove = async (req, res) => {
   try {
     const { id } = req.params;
 
     if (!id) {
       return res.status(400).json({
+        success: false,
         message: "ID tidak ditemukan",
       });
     }
@@ -270,14 +295,17 @@ exports.remove = async (req, res) => {
       [id]
     );
 
-    res.json({
+    return res.status(200).json({
+      success: true,
       message: "News berhasil dihapus",
     });
   } catch (err) {
     console.error("DELETE NEWS ERROR:", err);
 
-    res.status(500).json({
+    return res.status(500).json({
+      success: false,
       message: "Server error",
+      error: err.message,
     });
   }
 };
