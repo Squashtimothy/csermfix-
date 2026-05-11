@@ -25,7 +25,7 @@ console.log("DB_HOST:", process.env.DB_HOST);
 console.log("DB_NAME:", process.env.DB_NAME);
 
 /* ======================
-   DB CONNECTION TEST
+   DB CONNECTION
 ====================== */
 
 const db = require("./config/db");
@@ -34,6 +34,7 @@ const db = require("./config/db");
   try {
     const [rows] = await db.query("SHOW TABLES");
 
+    console.log("MySQL Connected...");
     console.log("DB CONNECTED SUCCESSFULLY");
     console.log("Tables:", rows);
   } catch (err) {
@@ -51,49 +52,33 @@ const allowedOrigins = [
   "https://www.cserm.unas.ac.id",
 ];
 
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests without origin (Postman/mobile app)
-    if (!origin) {
-      return callback(null, true);
-    }
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
 
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.log("Blocked by CORS:", origin);
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.log("Blocked by CORS:", origin);
 
-      callback(
-        new Error(`CORS blocked for origin: ${origin}`)
-      );
-    }
-  },
+        callback(null, false);
+      }
+    },
 
-  credentials: true,
-
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-
-  allowedHeaders: [
-    "Origin",
-    "X-Requested-With",
-    "Content-Type",
-    "Accept",
-    "Authorization",
-  ],
-};
-
-app.use(cors(corsOptions));
+    credentials: true,
+  })
+);
 
 /* ======================
    BODY PARSER
 ====================== */
 
-app.use(express.json({ limit: "5mb" }));
+app.use(express.json());
 
 app.use(
   express.urlencoded({
     extended: true,
-    limit: "5mb",
   })
 );
 
@@ -118,31 +103,25 @@ const homepageRoutes = require("./routes/homepageRoutes");
 const projectRoutes = require("./routes/projectRoutes");
 
 app.use("/api/auth", authRoutes);
-
 app.use("/api/news", newsRoutes);
-
 app.use("/api/teams", teamRoutes);
-
 app.use("/api/publications", publicationRoutes);
-
 app.use("/api/homepage", homepageRoutes);
-
 app.use("/api/projects", projectRoutes);
 
 /* ======================
-   HEALTH CHECK
+   ROOT
 ====================== */
 
 app.get("/", (req, res) => {
   res.json({
-    message: "Backend is running smoothly",
     status: "ok",
-    port: process.env.PORT,
+    message: "Backend running",
   });
 });
 
 /* ======================
-   404 HANDLER
+   404
 ====================== */
 
 app.use((req, res) => {
@@ -152,39 +131,23 @@ app.use((req, res) => {
 });
 
 /* ======================
-   GLOBAL ERROR HANDLER
+   ERROR HANDLER
 ====================== */
 
 app.use((err, req, res, next) => {
   console.error("GLOBAL ERROR:", err);
 
-  if (err.code === "LIMIT_FILE_SIZE") {
-    return res.status(400).json({
-      message: "File terlalu besar (maks 2MB)",
-    });
-  }
-
-  return res.status(500).json({
-    message: err.message || "Server error",
+  res.status(500).json({
+    message: err.message || "Internal Server Error",
   });
-});
-
-/* ======================
-   GRACEFUL SHUTDOWN
-====================== */
-
-process.on("SIGTERM", () => {
-  console.log("SIGTERM received. Shutting down...");
-  process.exit(0);
 });
 
 /* ======================
    START SERVER
 ====================== */
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8080;
 
-// Railway wajib pakai 0.0.0.0
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
