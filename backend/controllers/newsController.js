@@ -104,12 +104,17 @@ exports.create = async (req, res) => {
       message: "News berhasil ditambahkan",
     });
   } catch (err) {
-    console.error("CREATE NEWS ERROR:", err);
+  console.error("========== CREATE NEWS ERROR ==========");
+  console.error(err);
+  console.error("BODY:", req.body);
+  console.error("FILE:", req.file);
 
-    res.status(500).json({
-      message: err.message || "Server error",
-    });
-  }
+  return res.status(500).json({
+    success: false,
+    message: "CREATE NEWS ERROR",
+    error: err.message,
+  });
+}
 };
 
 // =====================
