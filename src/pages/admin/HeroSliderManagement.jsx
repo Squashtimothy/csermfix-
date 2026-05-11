@@ -2,64 +2,72 @@ import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 
 import {
-  getAimsAdmin,
-  createAim,
-  updateAim,
-  deleteAim,
+  createHero,
+  deleteHero,
+  getHeroAdmin,
   resolveImage,
+  updateHero,
 } from "../../services/homepageService";
 
-export default function AimsManagement() {
+export default function HeroSliderManagement() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   const [editId, setEditId] = useState(null);
-  const [currentImage, setCurrentImage] = useState("");
 
   const [form, setForm] = useState({
     file: null,
-    content: "",
+    caption: "",
     order_number: 1,
     is_active: 1,
   });
 
+  const [currentImage, setCurrentImage] = useState("");
+
   /* =========================
-     RESET FORM
+     RESET
   ========================= */
 
-  const resetForm = () => {
+  const reset = () => {
     setEditId(null);
+
     setCurrentImage("");
 
     setForm({
       file: null,
-      content: "",
+      caption: "",
       order_number: 1,
       is_active: 1,
     });
   };
 
   /* =========================
-     LOAD DATA
+     LOAD HERO
   ========================= */
 
-  const loadData = async () => {
+  const load = async () => {
     try {
       setLoading(true);
 
-      const res = await getAimsAdmin();
+      const data = await getHeroAdmin();
 
-      console.log("AIMS DATA:", res);
+      console.log("HERO ADMIN:", data);
 
-      // karena service sudah return response.data
-      setRows(Array.isArray(res) ? res : []);
-    } catch (err) {
-      console.error("LOAD AIMS ERROR:", err);
+      // support berbagai bentuk response
+      if (Array.isArray(data)) {
+        setRows(data);
+      } else if (Array.isArray(data?.data)) {
+        setRows(data.data);
+      } else {
+        setRows([]);
+      }
+    } catch (e) {
+      console.error("LOAD HERO ERROR:", e);
 
       Swal.fire(
         "Error",
-        err?.response?.data?.message || "Gagal memuat aims",
+        e?.response?.data?.message || "Gagal load hero",
         "error"
       );
     } finally {
@@ -68,34 +76,35 @@ export default function AimsManagement() {
   };
 
   useEffect(() => {
-    loadData();
+    load();
   }, []);
 
   /* =========================
-     HANDLE INPUT
+     INPUT CHANGE
   ========================= */
 
   const onChange = (e) => {
     const { name, value } = e.target;
 
-    setForm((prev) => ({
-      ...prev,
+    setForm((p) => ({
+      ...p,
       [name]:
-        name === "order_number" || name === "is_active"
+        name === "order_number" ||
+        name === "is_active"
           ? Number(value)
           : value,
     }));
   };
 
   /* =========================
-     HANDLE FILE
+     FILE CHANGE
   ========================= */
 
   const onFileChange = (e) => {
     const file = e.target.files?.[0] || null;
 
-    setForm((prev) => ({
-      ...prev,
+    setForm((p) => ({
+      ...p,
       file,
     }));
   };
@@ -111,19 +120,14 @@ export default function AimsManagement() {
 
     setForm({
       file: null,
-      content: item.content || "",
+      caption: item.caption || "",
       order_number: item.order_number || 1,
       is_active: Number(item.is_active ?? 1),
-    });
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
     });
   };
 
   /* =========================
-     PREVIEW IMAGE
+     PREVIEW
   ========================= */
 
   const previewUrl = useMemo(() => {
@@ -145,10 +149,10 @@ export default function AimsManagement() {
   const onSubmit = async (e) => {
     e.preventDefault();
 
-    if (!form.content.trim()) {
+    if (!editId && !form.file) {
       return Swal.fire(
         "Error",
-        "Content wajib diisi",
+        "Image wajib diupload",
         "error"
       );
     }
@@ -158,7 +162,11 @@ export default function AimsManagement() {
 
       const fd = new FormData();
 
-      fd.append("content", form.content);
+      if (form.file) {
+        fd.append("image", form.file);
+      }
+
+      fd.append("caption", form.caption || "");
 
       fd.append(
         "order_number",
@@ -170,52 +178,36 @@ export default function AimsManagement() {
         String(form.is_active ?? 1)
       );
 
-      if (form.file) {
-        fd.append("image", form.file);
-      }
-
-      /* =========================
-         UPDATE
-      ========================= */
-
       if (editId) {
-        await updateAim(editId, fd);
+        await updateHero(editId, fd);
 
         Swal.fire({
           icon: "success",
-          title: "Berhasil",
-          text: "Aim berhasil diupdate",
-          timer: 1400,
+          title: "Hero updated",
+          timer: 1200,
+          showConfirmButton: false,
+        });
+      } else {
+        await createHero(fd);
+
+        Swal.fire({
+          icon: "success",
+          title: "Hero created",
+          timer: 1200,
           showConfirmButton: false,
         });
       }
 
-      /* =========================
-         CREATE
-      ========================= */
+      reset();
 
-      else {
-        await createAim(fd);
-
-        Swal.fire({
-          icon: "success",
-          title: "Berhasil",
-          text: "Aim berhasil ditambahkan",
-          timer: 1400,
-          showConfirmButton: false,
-        });
-      }
-
-      resetForm();
-
-      await loadData();
-    } catch (err) {
-      console.error("SUBMIT ERROR:", err);
+      load();
+    } catch (e2) {
+      console.error("SAVE HERO ERROR:", e2);
 
       Swal.fire(
         "Error",
-        err?.response?.data?.message ||
-          "Gagal menyimpan aim",
+        e2?.response?.data?.message ||
+          "Gagal simpan hero",
         "error"
       );
     } finally {
@@ -228,35 +220,36 @@ export default function AimsManagement() {
   ========================= */
 
   const onDelete = async (id) => {
-    const result = await Swal.fire({
-      title: "Hapus aim?",
-      text: "Data yang dihapus tidak bisa dikembalikan.",
+    const confirm = await Swal.fire({
+      title: "Hapus hero?",
+      text: "Data akan dihapus permanen",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Ya, hapus",
+      confirmButtonText: "Ya",
       cancelButtonText: "Batal",
-      confirmButtonColor: "#d33",
     });
 
-    if (!result.isConfirmed) return;
+    if (!confirm.isConfirmed) {
+      return;
+    }
 
     try {
-      await deleteAim(id);
+      await deleteHero(id);
 
       Swal.fire(
         "Berhasil",
-        "Aim berhasil dihapus",
+        "Hero berhasil dihapus",
         "success"
       );
 
-      await loadData();
-    } catch (err) {
-      console.error("DELETE ERROR:", err);
+      load();
+    } catch (e) {
+      console.error("DELETE HERO ERROR:", e);
 
       Swal.fire(
         "Error",
-        err?.response?.data?.message ||
-          "Gagal menghapus aim",
+        e?.response?.data?.message ||
+          "Gagal hapus hero",
         "error"
       );
     }
@@ -267,23 +260,24 @@ export default function AimsManagement() {
   ========================= */
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className="max-w-5xl mx-auto p-6">
+
       {/* HEADER */}
 
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-extrabold text-[#1e9c2d]">
-            Aims Management
+            Hero Slider
           </h1>
 
           <p className="text-gray-500">
-            Kelola aims beserta gambar pada homepage.
+            Kelola gambar slider homepage
           </p>
         </div>
 
         <button
-          onClick={loadData}
-          className="px-4 py-2 rounded-xl border hover:bg-gray-50"
+          onClick={load}
+          className="px-4 py-2 border rounded-xl hover:bg-gray-50"
         >
           Refresh
         </button>
@@ -293,10 +287,11 @@ export default function AimsManagement() {
 
       <form
         onSubmit={onSubmit}
-        className="bg-white border rounded-2xl p-5 shadow-sm mb-8 space-y-4"
+        className="bg-white border rounded-2xl p-5 shadow-sm mb-8"
       >
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* IMAGE */}
+        <div className="grid md:grid-cols-2 gap-4">
+
+          {/* LEFT */}
 
           <div>
             <label className="text-sm font-medium">
@@ -310,50 +305,36 @@ export default function AimsManagement() {
               className="w-full border rounded-xl px-3 py-2 mt-1"
             />
 
-            {/* PREVIEW */}
-
             {previewUrl && (
               <div className="mt-3 border rounded-xl overflow-hidden">
                 <img
                   src={previewUrl}
                   alt="preview"
-                  className="w-full h-56 object-cover"
+                  className="w-full h-44 object-cover"
                 />
               </div>
             )}
-
-            {editId &&
-              !form.file &&
-              currentImage && (
-                <div className="mt-2 text-xs text-gray-500">
-                  Gambar saat ini: {currentImage}
-                </div>
-              )}
           </div>
 
-          {/* RIGHT FORM */}
+          {/* RIGHT */}
 
           <div className="space-y-4">
-            {/* CONTENT */}
 
             <div>
               <label className="text-sm font-medium">
-                Content
+                Caption
               </label>
 
-              <textarea
-                name="content"
-                value={form.content}
+              <input
+                name="caption"
+                value={form.caption}
                 onChange={onChange}
-                rows={7}
-                className="w-full border rounded-xl px-3 py-2 mt-1 focus:outline-none focus:ring-2 focus:ring-[#1e9c2d]"
-                placeholder="Masukkan isi aims..."
+                className="w-full border rounded-xl px-3 py-2 mt-1"
               />
             </div>
 
-            {/* ORDER + STATUS */}
-
             <div className="grid grid-cols-2 gap-3">
+
               <div>
                 <label className="text-sm font-medium">
                   Order
@@ -364,7 +345,6 @@ export default function AimsManagement() {
                   name="order_number"
                   value={form.order_number}
                   onChange={onChange}
-                  min={1}
                   className="w-full border rounded-xl px-3 py-2 mt-1"
                 />
               </div>
@@ -378,26 +358,20 @@ export default function AimsManagement() {
                   name="is_active"
                   value={form.is_active}
                   onChange={onChange}
-                  className="w-full border rounded-xl px-3 py-2 mt-1 bg-white"
+                  className="w-full border rounded-xl px-3 py-2 mt-1"
                 >
-                  <option value={1}>
-                    Active
-                  </option>
-
-                  <option value={0}>
-                    Inactive
-                  </option>
+                  <option value={1}>Active</option>
+                  <option value={0}>Inactive</option>
                 </select>
               </div>
+
             </div>
 
-            {/* BUTTON */}
-
             <div className="flex gap-2">
+
               <button
-                type="submit"
                 disabled={submitting}
-                className="bg-[#1e9c2d] text-white px-4 py-2 rounded-xl disabled:opacity-60"
+                className="bg-[#1e9c2d] text-white px-4 py-2 rounded-xl"
               >
                 {submitting
                   ? "Menyimpan..."
@@ -409,109 +383,74 @@ export default function AimsManagement() {
               {editId && (
                 <button
                   type="button"
-                  onClick={resetForm}
-                  className="px-4 py-2 rounded-xl border"
+                  onClick={reset}
+                  className="border px-4 py-2 rounded-xl"
                 >
                   Batal
                 </button>
               )}
+
             </div>
+
           </div>
+
         </div>
       </form>
 
       {/* LIST */}
 
       {loading ? (
-        <div className="text-gray-500">
-          Loading...
-        </div>
+        <div>Loading...</div>
       ) : rows.length === 0 ? (
-        <div className="text-gray-500">
-          Belum ada data aims.
-        </div>
+        <div>Belum ada hero.</div>
       ) : (
         <div className="grid md:grid-cols-2 gap-4">
-          {rows.map((item) => (
+
+          {rows.map((hero) => (
             <div
-              key={item.id}
+              key={hero.id}
               className="bg-white border rounded-2xl overflow-hidden shadow-sm"
             >
-              {/* IMAGE */}
 
-              {item.image ? (
-                <img
-                  src={resolveImage(item.image)}
-                  alt="aim"
-                  className="w-full h-52 object-cover"
-                />
-              ) : (
-                <div className="w-full h-52 bg-gray-100 flex items-center justify-center text-gray-400">
-                  No Image
-                </div>
-              )}
-
-              {/* CONTENT */}
+              <img
+                src={resolveImage(hero.image)}
+                alt="hero"
+                className="w-full h-44 object-cover"
+              />
 
               <div className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1">
-                    <div className="text-sm text-gray-800 whitespace-pre-line line-clamp-5">
-                      {item.content}
-                    </div>
 
-                    <div className="text-xs text-gray-500 mt-2">
-                      order: {item.order_number}
-                      {" • "}
-                      status:
-                      <span
-                        className={
-                          item.is_active
-                            ? "text-[#1e9c2d]"
-                            : "text-gray-400"
-                        }
-                      >
-                        {" "}
-                        {item.is_active
-                          ? "active"
-                          : "inactive"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* ACTION */}
-
-                  <div className="flex gap-2 shrink-0">
-                    <button
-                      onClick={() =>
-                        onEdit(item)
-                      }
-                      className="text-sm text-blue-600 hover:underline"
-                    >
-                      Edit
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        onDelete(item.id)
-                      }
-                      className="text-sm text-red-600 hover:underline"
-                    >
-                      Hapus
-                    </button>
-                  </div>
+                <div className="font-semibold">
+                  {hero.caption || "No caption"}
                 </div>
 
-                {/* IMAGE PATH */}
+                <div className="text-xs text-gray-500 mt-1">
+                  order: {hero.order_number}
+                </div>
 
-                {item.image && (
-                  <div className="mt-2 text-xs text-gray-500 break-all">
-                    {item.image}
-                  </div>
-                )}
+                <div className="flex gap-3 mt-3">
+
+                  <button
+                    onClick={() => onEdit(hero)}
+                    className="text-blue-600 text-sm"
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    onClick={() => onDelete(hero.id)}
+                    className="text-red-600 text-sm"
+                  >
+                    Hapus
+                  </button>
+
+                </div>
+
               </div>
+
             </div>
           ))}
+
         </div>
       )}
     </div>
