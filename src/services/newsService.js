@@ -1,7 +1,12 @@
 import axios from "axios";
 
+/* =========================
+   BASE URL
+========================= */
+
 const BASE_URL =
-  process.env.REACT_APP_API_URL;
+  process.env.REACT_APP_API_URL ||
+  "https://resilient-balance-production-57f8.up.railway.app";
 
 const API = `${BASE_URL}/api/news`;
 
@@ -18,19 +23,31 @@ const getAuthHeaders = (
   const token =
     localStorage.getItem("token");
 
-  return {
+  console.log("TOKEN:", token);
+
+  // TOKEN TIDAK ADA
+  if (!token) {
+    console.error(
+      "Token tidak ditemukan"
+    );
+
+    return {};
+  }
+
+  const headers = {
     Authorization: `Bearer ${token}`,
-
-    ...(type === "multipart" && {
-      "Content-Type":
-        "multipart/form-data",
-    }),
-
-    ...(type === "json" && {
-      "Content-Type":
-        "application/json",
-    }),
   };
+
+  // JSON
+  if (type === "json") {
+    headers["Content-Type"] =
+      "application/json";
+  }
+
+  // MULTIPART
+  // JANGAN SET MANUAL multipart/form-data
+  // biarkan browser generate boundary
+  return headers;
 };
 
 /* =========================
@@ -61,16 +78,32 @@ export const getPublishedNews =
 export const createNews = async (
   data
 ) => {
-  console.log(
-    "POST URL:",
-    API
-  );
+  try {
+    console.log("POST URL:", API);
 
-  return axios.post(API, data, {
-    headers: getAuthHeaders(
-      "multipart"
-    ),
-  });
+    return await axios.post(
+      API,
+      data,
+      {
+        headers:
+          getAuthHeaders(
+            "multipart"
+          ),
+      }
+    );
+  } catch (err) {
+    console.error(
+      "CREATE NEWS ERROR:",
+      err
+    );
+
+    console.error(
+      "ERROR RESPONSE:",
+      err.response?.data
+    );
+
+    throw err;
+  }
 };
 
 /* =========================
