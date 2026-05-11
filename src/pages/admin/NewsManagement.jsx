@@ -1,364 +1,444 @@
-// src/pages/admin/NewsManagement.jsx
-
 import { useEffect, useState } from "react";
-import axios from "axios";
+import {
+  getNews,
+  createNews,
+  updateNews,
+  deleteNews,
+  updateNewsStatus,
+} from "../../services/newsService";
+
+import Swal from "sweetalert2";
 
 const API_BASE = (
   process.env.REACT_APP_API_URL ||
   "https://resilient-balance-production-57f8.up.railway.app"
 ).replace(/\/$/, "");
 
-/* =========================================
+/* ======================
    RESOLVE IMAGE
-========================================= */
+====================== */
 
 const resolveImage = (image) => {
   if (!image) {
     return "https://via.placeholder.com/400x200?text=No+Image";
   }
 
-  // kalau sudah full url
+  // jika sudah full url
   if (image.startsWith("http")) {
     return image;
   }
 
-  // image local uploads
-  return `${API_BASE}/uploads/${image}`;
+  // hapus slash depan jika ada
+  const cleanImage = image.replace(/^\/+/, "");
+
+  return `${API_BASE}/uploads/${cleanImage}`;
 };
 
 export default function NewsManagement() {
   const [news, setNews] = useState([]);
-
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [status, setStatus] = useState("published");
-  const [image, setImage] = useState(null);
-
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [editId, setEditId] = useState(null);
 
-  /* =========================================
-     FETCH NEWS
-  ========================================= */
+  const [form, setForm] = useState({
+    title: "",
+    content: "",
+    image: null,
+    status: "published",
+  });
 
-  const fetchNews = async () => {
+  const [fileKey, setFileKey] = useState(Date.now());
+
+  /* ======================
+     LOAD DATA
+  ====================== */
+
+  const loadData = async () => {
     try {
-      const token = localStorage.getItem("token");
+      setLoading(true);
 
-      const response = await axios.get(
-        `${API_BASE}/api/news`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const res = await getNews();
 
-      console.log("NEWS RESPONSE:", response.data);
+      console.log("NEWS RESPONSE:", res);
 
-      // FIX AGAR TIDAK MAP ERROR
-      let result = [];
+      let data = [];
 
-      if (Array.isArray(response.data)) {
-        result = response.data;
-      } else if (
-        response.data &&
-        Array.isArray(response.data.data)
-      ) {
-        result = response.data.data;
+      // array langsung
+      if (Array.isArray(res)) {
+        data = res;
       }
 
-      setNews(result);
+      // axios response.data array
+      else if (Array.isArray(res.data)) {
+        data = res.data;
+      }
+
+      // nested data
+      else if (Array.isArray(res.data?.data)) {
+        data = res.data.data;
+      }
+
+      setNews(data);
     } catch (err) {
       console.error("LOAD NEWS ERROR:", err);
 
       setNews([]);
-    }
-  };
 
-  /* =========================================
-     CREATE NEWS
-  ========================================= */
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    try {
-      setLoading(true);
-
-      const token = localStorage.getItem("token");
-
-      const formData = new FormData();
-
-      formData.append("title", title);
-      formData.append("content", content);
-      formData.append("status", status);
-
-      if (image) {
-        formData.append("image", image);
-      }
-
-      await axios.post(
-        `${API_BASE}/api/news`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type":
-              "multipart/form-data",
-          },
-        }
-      );
-
-      // reset form
-      setTitle("");
-      setContent("");
-      setStatus("published");
-      setImage(null);
-
-      // reload data
-      fetchNews();
-    } catch (err) {
-      console.error(
-        "CREATE NEWS ERROR:",
-        err
-      );
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Gagal mengambil data news",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  /* =========================================
-     DELETE NEWS
-  ========================================= */
+  useEffect(() => {
+    loadData();
+  }, []);
 
-  const handleDelete = async (id) => {
+  /* ======================
+     HANDLE INPUT
+  ====================== */
+
+  const handleChange = (e) => {
+    const { name, value, files } = e.target;
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: files ? files[0] : value,
+    }));
+  };
+
+  /* ======================
+     RESET FORM
+  ====================== */
+
+  const resetForm = () => {
+    setForm({
+      title: "",
+      content: "",
+      image: null,
+      status: "published",
+    });
+
+    setEditId(null);
+
+    setFileKey(Date.now());
+  };
+
+  /* ======================
+     SUBMIT
+  ====================== */
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
     try {
-      const token = localStorage.getItem("token");
+      setSubmitting(true);
 
-      await axios.delete(
-        `${API_BASE}/api/news/${id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const formData = new FormData();
 
-      fetchNews();
+      formData.append("title", form.title);
+      formData.append("content", form.content);
+      formData.append("status", form.status);
+
+      if (form.image) {
+        formData.append("image", form.image);
+      }
+
+      let response;
+
+      // UPDATE
+      if (editId) {
+        response = await updateNews(editId, formData);
+
+        Swal.fire({
+          icon: "success",
+          title: "Berhasil",
+          text: "News berhasil diupdate",
+        });
+      }
+
+      // CREATE
+      else {
+        response = await createNews(formData);
+
+        Swal.fire({
+          icon: "success",
+          title: "Berhasil",
+          text: "News berhasil ditambahkan",
+        });
+      }
+
+      console.log("SUBMIT RESPONSE:", response);
+
+      resetForm();
+
+      await loadData();
     } catch (err) {
-      console.error(
-        "DELETE NEWS ERROR:",
-        err
-      );
+      console.error("SUBMIT ERROR:", err);
+
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text:
+          err?.response?.data?.message ||
+          "Gagal menyimpan news",
+      });
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  /* =========================================
-     TOGGLE STATUS
-  ========================================= */
+  /* ======================
+     DELETE
+  ====================== */
 
-  const toggleStatus = async (item) => {
+  const handleDelete = async (id) => {
     try {
-      const token = localStorage.getItem("token");
+      const result = await Swal.fire({
+        title: "Yakin ingin menghapus?",
+        icon: "warning",
+        showCancelButton: true,
+      });
 
+      if (!result.isConfirmed) return;
+
+      await deleteNews(id);
+
+      Swal.fire({
+        icon: "success",
+        title: "Berhasil",
+        text: "News berhasil dihapus",
+      });
+
+      await loadData();
+    } catch (err) {
+      console.error("DELETE ERROR:", err);
+
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Gagal menghapus news",
+      });
+    }
+  };
+
+  /* ======================
+     EDIT
+  ====================== */
+
+  const handleEdit = (item) => {
+    setEditId(item.id);
+
+    setForm({
+      title: item.title || "",
+      content: item.content || "",
+      image: null,
+      status: item.status || "published",
+    });
+
+    setFileKey(Date.now());
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
+  /* ======================
+     TOGGLE STATUS
+  ====================== */
+
+  const handleToggleStatus = async (item) => {
+    try {
       const newStatus =
         item.status === "published"
           ? "draft"
           : "published";
 
-      await axios.patch(
-        `${API_BASE}/api/news/${item.id}/status`,
-        {
-          status: newStatus,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      await updateNewsStatus(
+        item.id,
+        newStatus
       );
 
-      fetchNews();
+      Swal.fire({
+        icon: "success",
+        title: "Berhasil",
+        text: `Status diubah ke ${newStatus}`,
+      });
+
+      await loadData();
     } catch (err) {
-      console.error(
-        "STATUS UPDATE ERROR:",
-        err
-      );
+      console.error("STATUS ERROR:", err);
+
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text:
+          err?.response?.data?.message ||
+          "Gagal update status",
+      });
     }
   };
 
-  /* =========================================
-     LOAD
-  ========================================= */
-
-  useEffect(() => {
-    fetchNews();
-  }, []);
-
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      {/* =========================================
-          TITLE
-      ========================================= */}
-
-      <h1 className="text-3xl font-bold mb-6">
+    <div className="max-w-4xl mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">
         Kelola News
       </h1>
 
-      {/* =========================================
-          FORM
-      ========================================= */}
+      {/* ================= FORM ================= */}
 
       <form
         onSubmit={handleSubmit}
-        className="bg-white p-5 rounded shadow mb-8"
+        className="space-y-3 mb-6"
       >
-        {/* title */}
-        <div className="mb-4">
-          <input
-            type="text"
-            placeholder="Judul"
-            className="w-full border p-3 rounded"
-            value={title}
-            onChange={(e) =>
-              setTitle(e.target.value)
-            }
-            required
-          />
-        </div>
+        <input
+          type="text"
+          name="title"
+          value={form.title}
+          onChange={handleChange}
+          placeholder="Judul"
+          className="w-full border p-2 rounded"
+          required
+        />
 
-        {/* content */}
-        <div className="mb-4">
-          <textarea
-            placeholder="Konten"
-            rows={5}
-            className="w-full border p-3 rounded"
-            value={content}
-            onChange={(e) =>
-              setContent(e.target.value)
-            }
-            required
-          />
-        </div>
+        <textarea
+          name="content"
+          value={form.content}
+          onChange={handleChange}
+          placeholder="Konten"
+          className="w-full border p-2 rounded"
+          rows={4}
+          required
+        />
 
-        {/* status */}
-        <div className="mb-4">
-          <select
-            className="w-full border p-3 rounded"
-            value={status}
-            onChange={(e) =>
-              setStatus(e.target.value)
-            }
-          >
-            <option value="published">
-              Publish
-            </option>
-
-            <option value="draft">
-              Draft
-            </option>
-          </select>
-        </div>
-
-        {/* image */}
-        <div className="mb-4">
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) =>
-              setImage(e.target.files[0])
-            }
-          />
-        </div>
-
-        {/* submit */}
-        <button
-          type="submit"
-          disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded"
+        <select
+          name="status"
+          value={form.status}
+          onChange={handleChange}
+          className="w-full border p-2 rounded"
         >
-          {loading
-            ? "Loading..."
-            : "Tambah News"}
-        </button>
+          <option value="published">
+            Publish
+          </option>
+
+          <option value="draft">
+            Draft
+          </option>
+        </select>
+
+        <input
+          key={fileKey}
+          type="file"
+          name="image"
+          accept="image/*"
+          onChange={handleChange}
+        />
+
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            disabled={submitting}
+            className="bg-blue-600 text-white px-4 py-2 rounded"
+          >
+            {submitting
+              ? "Loading..."
+              : editId
+              ? "Update News"
+              : "Tambah News"}
+          </button>
+
+          {editId && (
+            <button
+              type="button"
+              onClick={resetForm}
+              className="bg-gray-500 text-white px-4 py-2 rounded"
+            >
+              Batal
+            </button>
+          )}
+        </div>
       </form>
 
-      {/* =========================================
-          LIST NEWS
-      ========================================= */}
+      {/* ================= LIST ================= */}
 
-      <div className="space-y-5">
-        {Array.isArray(news) &&
-        news.length > 0 ? (
-          news.map((item) => (
-            <div
-              key={item.id}
-              className="bg-white p-5 rounded shadow"
-            >
-              {/* title */}
-              <h2 className="text-2xl font-bold mb-2">
-                {item.title}
-              </h2>
+      {loading ? (
+        <p>Loading...</p>
+      ) : !Array.isArray(news) ||
+        news.length === 0 ? (
+        <p>Tidak ada data news</p>
+      ) : (
+        news.map((n) => (
+          <div
+            key={n.id}
+            className="bg-white p-4 rounded shadow mb-3"
+          >
+            <h3 className="font-semibold text-lg">
+              {n.title}
+            </h3>
 
-              {/* content */}
-              <p className="text-gray-600 mb-3">
-                {item.content}
-              </p>
+            <p className="text-sm text-gray-600 mb-2">
+              {n.content}
+            </p>
 
-              {/* image */}
+            {/* IMAGE */}
+            {n.image && (
               <img
-                src={resolveImage(item.image)}
-                alt={item.title}
-                className="w-52 h-32 object-cover rounded border mb-3"
+                src={resolveImage(n.image)}
+                alt={n.title}
+                className="w-40 h-28 object-cover rounded mb-2 border"
                 onError={(e) => {
                   e.target.src =
                     "https://via.placeholder.com/400x200?text=No+Image";
                 }}
               />
+            )}
 
-              {/* status */}
-              <span
-                className={`inline-block px-3 py-1 rounded text-sm mb-3 ${
-                  item.status ===
-                  "published"
-                    ? "bg-green-100 text-green-700"
-                    : "bg-yellow-100 text-yellow-700"
-                }`}
+            {/* STATUS */}
+            <span
+              className={`text-xs px-2 py-1 rounded ${
+                n.status === "draft"
+                  ? "bg-yellow-200 text-yellow-800"
+                  : "bg-green-200 text-green-800"
+              }`}
+            >
+              {n.status}
+            </span>
+
+            {/* ACTION */}
+            <div className="flex gap-3 mt-3">
+              <button
+                onClick={() => handleEdit(n)}
+                className="text-blue-600 text-sm"
               >
-                {item.status}
-              </span>
+                Edit
+              </button>
 
-              {/* actions */}
-              <div className="flex gap-4">
-                <button
-                  onClick={() =>
-                    toggleStatus(item)
-                  }
-                  className="text-orange-500"
-                >
-                  {item.status ===
-                  "published"
-                    ? "Jadikan Draft"
-                    : "Publish"}
-                </button>
+              <button
+                onClick={() => handleDelete(n.id)}
+                className="text-red-600 text-sm"
+              >
+                Hapus
+              </button>
 
-                <button
-                  onClick={() =>
-                    handleDelete(item.id)
-                  }
-                  className="text-red-500"
-                >
-                  Hapus
-                </button>
-              </div>
+              <button
+                onClick={() =>
+                  handleToggleStatus(n)
+                }
+                className="text-yellow-600 text-sm"
+              >
+                {n.status === "published"
+                  ? "Jadikan Draft"
+                  : "Publish"}
+              </button>
             </div>
-          ))
-        ) : (
-          <div className="text-gray-500">
-            Belum ada news
           </div>
-        )}
-      </div>
+        ))
+      )}
     </div>
   );
 }
