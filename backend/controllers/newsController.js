@@ -3,7 +3,6 @@ const db = require("../config/db");
 /* =========================
    GET ALL NEWS
 ========================= */
-
 exports.getAll = async (req, res) => {
   try {
     const [rows] = await db.query(`
@@ -12,11 +11,14 @@ exports.getAll = async (req, res) => {
       ORDER BY created_at DESC
     `);
 
-    res.json(rows);
+    return res.status(200).json({
+      success: true,
+      data: rows,
+    });
   } catch (err) {
-    console.log("GET ALL ERROR:", err);
+    console.error("GET NEWS ERROR:", err);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Gagal mengambil news",
       error: err.message,
@@ -25,26 +27,47 @@ exports.getAll = async (req, res) => {
 };
 
 /* =========================
-   GET DETAIL NEWS
+   GET PUBLISHED NEWS
 ========================= */
+exports.getPublished = async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT *
+      FROM news
+      WHERE status = 'published'
+      ORDER BY created_at DESC
+    `);
 
+    return res.status(200).json({
+      success: true,
+      data: rows,
+    });
+  } catch (err) {
+    console.error(
+      "GET PUBLISHED ERROR:",
+      err
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Gagal mengambil published news",
+      error: err.message,
+    });
+  }
+};
+
+/* =========================
+   GET BY ID
+========================= */
 exports.getById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    console.log("NEWS ID:", id);
-
     const [rows] = await db.query(
-      `
-      SELECT *
-      FROM news
-      WHERE id = ?
-      LIMIT 1
-      `,
+      "SELECT * FROM news WHERE id = ?",
       [id]
     );
-
-    console.log("DETAIL RESULT:", rows);
 
     if (rows.length === 0) {
       return res.status(404).json({
@@ -53,13 +76,20 @@ exports.getById = async (req, res) => {
       });
     }
 
-    res.json(rows[0]);
+    return res.status(200).json({
+      success: true,
+      data: rows[0],
+    });
   } catch (err) {
-    console.log("DETAIL ERROR:", err);
+    console.error(
+      "GET NEWS BY ID ERROR:",
+      err
+    );
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Gagal mengambil detail news",
+      message:
+        "Gagal mengambil news",
       error: err.message,
     });
   }
@@ -68,10 +98,31 @@ exports.getById = async (req, res) => {
 /* =========================
    CREATE NEWS
 ========================= */
-
 exports.create = async (req, res) => {
   try {
-    const { title, content } = req.body;
+    console.log(
+      "BODY:",
+      req.body
+    );
+
+    console.log(
+      "FILE:",
+      req.file
+    );
+
+    const {
+      title,
+      content,
+      status,
+    } = req.body;
+
+    if (!title || !content) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Title dan content wajib diisi",
+      });
+    }
 
     let image = null;
 
@@ -82,23 +133,40 @@ exports.create = async (req, res) => {
     const [result] = await db.query(
       `
       INSERT INTO news
-      (title, content, image)
-      VALUES (?, ?, ?)
+      (title, content, image, status)
+      VALUES (?, ?, ?, ?)
       `,
-      [title, content, image]
+      [
+        title,
+        content,
+        image,
+        status || "published",
+      ]
     );
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
-      message: "News berhasil dibuat",
-      id: result.insertId,
+      message:
+        "News berhasil ditambahkan",
+      data: {
+        id: result.insertId,
+        title,
+        content,
+        image,
+        status:
+          status || "published",
+      },
     });
   } catch (err) {
-    console.log("CREATE ERROR:", err);
+    console.error(
+      "CREATE NEWS ERROR:",
+      err
+    );
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "CREATE NEWS ERROR",
+      message:
+        "CREATE NEWS ERROR",
       error: err.message,
     });
   }
@@ -107,29 +175,33 @@ exports.create = async (req, res) => {
 /* =========================
    UPDATE NEWS
 ========================= */
-
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, content } = req.body;
 
-    const [oldNews] = await db.query(
-      `
-      SELECT *
-      FROM news
-      WHERE id = ?
-      `,
-      [id]
-    );
+    const {
+      title,
+      content,
+      status,
+    } = req.body;
 
-    if (oldNews.length === 0) {
+    const [oldRows] =
+      await db.query(
+        "SELECT * FROM news WHERE id = ?",
+        [id]
+      );
+
+    if (oldRows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "News tidak ditemukan",
+        message:
+          "News tidak ditemukan",
       });
     }
 
-    let image = oldNews[0].image;
+    const oldData = oldRows[0];
+
+    let image = oldData.image;
 
     if (req.file) {
       image = `/uploads/news/${req.file.filename}`;
@@ -141,53 +213,105 @@ exports.update = async (req, res) => {
       SET
         title = ?,
         content = ?,
-        image = ?
+        image = ?,
+        status = ?
       WHERE id = ?
       `,
-      [title, content, image, id]
+      [
+        title || oldData.title,
+        content || oldData.content,
+        image,
+        status || oldData.status,
+        id,
+      ]
     );
 
-    res.json({
+    return res.status(200).json({
       success: true,
-      message: "News berhasil diupdate",
+      message:
+        "News berhasil diupdate",
     });
   } catch (err) {
-    console.log("UPDATE ERROR:", err);
+    console.error(
+      "UPDATE NEWS ERROR:",
+      err
+    );
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "UPDATE NEWS ERROR",
+      message:
+        "UPDATE NEWS ERROR",
       error: err.message,
     });
   }
 };
 
 /* =========================
+   UPDATE STATUS
+========================= */
+exports.updateStatus =
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status } =
+        req.body;
+
+      await db.query(
+        `
+      UPDATE news
+      SET status = ?
+      WHERE id = ?
+      `,
+        [status, id]
+      );
+
+      return res.status(200).json({
+        success: true,
+        message:
+          "Status berhasil diupdate",
+      });
+    } catch (err) {
+      console.error(
+        "STATUS ERROR:",
+        err
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Gagal update status",
+        error: err.message,
+      });
+    }
+  };
+
+/* =========================
    DELETE NEWS
 ========================= */
-
 exports.remove = async (req, res) => {
   try {
     const { id } = req.params;
 
     await db.query(
-      `
-      DELETE FROM news
-      WHERE id = ?
-      `,
+      "DELETE FROM news WHERE id = ?",
       [id]
     );
 
-    res.json({
+    return res.status(200).json({
       success: true,
-      message: "News berhasil dihapus",
+      message:
+        "News berhasil dihapus",
     });
   } catch (err) {
-    console.log("DELETE ERROR:", err);
+    console.error(
+      "DELETE ERROR:",
+      err
+    );
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "DELETE NEWS ERROR",
+      message:
+        "Gagal menghapus news",
       error: err.message,
     });
   }
