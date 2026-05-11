@@ -1,444 +1,305 @@
+// src/pages/admin/NewsManagement.jsx
+
 import { useEffect, useState } from "react";
-import {
-  getNews,
-  createNews,
-  updateNews,
-  deleteNews,
-  updateNewsStatus,
-} from "../../services/newsService";
+import axios from "axios";
 
-import Swal from "sweetalert2";
-
-const API_BASE = (
+const API_BASE =
   process.env.REACT_APP_API_URL ||
-  "https://resilient-balance-production-57f8.up.railway.app"
-).replace(/\/$/, "");
+  "https://resilient-balance-production-57f8.up.railway.app";
 
-/* ======================
+/* =========================================
    RESOLVE IMAGE
-====================== */
+========================================= */
 
 const resolveImage = (image) => {
   if (!image) {
     return "https://via.placeholder.com/400x200?text=No+Image";
   }
 
-  // jika sudah full url
+  // kalau sudah full url
   if (image.startsWith("http")) {
     return image;
   }
 
-  // hapus slash depan jika ada
-  const cleanImage = image.replace(/^\/+/, "");
-
-  return `${API_BASE}/uploads/${cleanImage}`;
+  // FIX PATH IMAGE
+  return `${API_BASE}/uploads/${image}`;
 };
 
 export default function NewsManagement() {
   const [news, setNews] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [editId, setEditId] = useState(null);
 
-  const [form, setForm] = useState({
-    title: "",
-    content: "",
-    image: null,
-    status: "published",
-  });
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [status, setStatus] = useState("published");
+  const [image, setImage] = useState(null);
 
-  const [fileKey, setFileKey] = useState(Date.now());
+  /* =========================================
+     LOAD NEWS
+  ========================================= */
 
-  /* ======================
-     LOAD DATA
-  ====================== */
-
-  const loadData = async () => {
+  const fetchNews = async () => {
     try {
-      setLoading(true);
+      const token = localStorage.getItem("token");
 
-      const res = await getNews();
+      const response = await axios.get(
+        `${API_BASE}/api/news`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-      console.log("NEWS RESPONSE:", res);
+      console.log("NEWS:", response.data);
 
-      let data = [];
-
-      // array langsung
-      if (Array.isArray(res)) {
-        data = res;
-      }
-
-      // axios response.data array
-      else if (Array.isArray(res.data)) {
-        data = res.data;
-      }
-
-      // nested data
-      else if (Array.isArray(res.data?.data)) {
-        data = res.data.data;
-      }
-
-      setNews(data);
+      setNews(response.data || []);
     } catch (err) {
       console.error("LOAD NEWS ERROR:", err);
-
-      setNews([]);
-
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Gagal mengambil data news",
-      });
-    } finally {
-      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  /* ======================
-     HANDLE INPUT
-  ====================== */
-
-  const handleChange = (e) => {
-    const { name, value, files } = e.target;
-
-    setForm((prev) => ({
-      ...prev,
-      [name]: files ? files[0] : value,
-    }));
-  };
-
-  /* ======================
-     RESET FORM
-  ====================== */
-
-  const resetForm = () => {
-    setForm({
-      title: "",
-      content: "",
-      image: null,
-      status: "published",
-    });
-
-    setEditId(null);
-
-    setFileKey(Date.now());
-  };
-
-  /* ======================
-     SUBMIT
-  ====================== */
+  /* =========================================
+     CREATE NEWS
+  ========================================= */
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
-      setSubmitting(true);
+      const token = localStorage.getItem("token");
 
       const formData = new FormData();
 
-      formData.append("title", form.title);
-      formData.append("content", form.content);
-      formData.append("status", form.status);
+      formData.append("title", title);
+      formData.append("content", content);
+      formData.append("status", status);
 
-      if (form.image) {
-        formData.append("image", form.image);
+      if (image) {
+        formData.append("image", image);
       }
 
-      let response;
+      await axios.post(
+        `${API_BASE}/api/news`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
 
-      // UPDATE
-      if (editId) {
-        response = await updateNews(editId, formData);
+      setTitle("");
+      setContent("");
+      setStatus("published");
+      setImage(null);
 
-        Swal.fire({
-          icon: "success",
-          title: "Berhasil",
-          text: "News berhasil diupdate",
-        });
-      }
-
-      // CREATE
-      else {
-        response = await createNews(formData);
-
-        Swal.fire({
-          icon: "success",
-          title: "Berhasil",
-          text: "News berhasil ditambahkan",
-        });
-      }
-
-      console.log("SUBMIT RESPONSE:", response);
-
-      resetForm();
-
-      await loadData();
+      fetchNews();
     } catch (err) {
-      console.error("SUBMIT ERROR:", err);
-
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text:
-          err?.response?.data?.message ||
-          "Gagal menyimpan news",
-      });
-    } finally {
-      setSubmitting(false);
+      console.error("CREATE NEWS ERROR:", err);
     }
   };
 
-  /* ======================
+  /* =========================================
      DELETE
-  ====================== */
+  ========================================= */
 
   const handleDelete = async (id) => {
     try {
-      const result = await Swal.fire({
-        title: "Yakin ingin menghapus?",
-        icon: "warning",
-        showCancelButton: true,
-      });
+      const token = localStorage.getItem("token");
 
-      if (!result.isConfirmed) return;
+      await axios.delete(
+        `${API_BASE}/api/news/${id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-      await deleteNews(id);
-
-      Swal.fire({
-        icon: "success",
-        title: "Berhasil",
-        text: "News berhasil dihapus",
-      });
-
-      await loadData();
+      fetchNews();
     } catch (err) {
       console.error("DELETE ERROR:", err);
-
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Gagal menghapus news",
-      });
     }
   };
 
-  /* ======================
-     EDIT
-  ====================== */
+  /* =========================================
+     STATUS
+  ========================================= */
 
-  const handleEdit = (item) => {
-    setEditId(item.id);
-
-    setForm({
-      title: item.title || "",
-      content: item.content || "",
-      image: null,
-      status: item.status || "published",
-    });
-
-    setFileKey(Date.now());
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  };
-
-  /* ======================
-     TOGGLE STATUS
-  ====================== */
-
-  const handleToggleStatus = async (item) => {
+  const toggleStatus = async (item) => {
     try {
+      const token = localStorage.getItem("token");
+
       const newStatus =
         item.status === "published"
           ? "draft"
           : "published";
 
-      await updateNewsStatus(
-        item.id,
-        newStatus
+      await axios.patch(
+        `${API_BASE}/api/news/${item.id}/status`,
+        {
+          status: newStatus,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
 
-      Swal.fire({
-        icon: "success",
-        title: "Berhasil",
-        text: `Status diubah ke ${newStatus}`,
-      });
-
-      await loadData();
+      fetchNews();
     } catch (err) {
       console.error("STATUS ERROR:", err);
-
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text:
-          err?.response?.data?.message ||
-          "Gagal update status",
-      });
     }
   };
 
+  useEffect(() => {
+    fetchNews();
+  }, []);
+
   return (
-    <div className="max-w-4xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">
+    <div className="max-w-5xl mx-auto p-6">
+      <h1 className="text-3xl font-bold mb-6">
         Kelola News
       </h1>
 
-      {/* ================= FORM ================= */}
+      {/* =========================================
+          FORM
+      ========================================= */}
 
       <form
         onSubmit={handleSubmit}
-        className="space-y-3 mb-6"
+        className="bg-white p-5 rounded shadow mb-8"
       >
-        <input
-          type="text"
-          name="title"
-          value={form.title}
-          onChange={handleChange}
-          placeholder="Judul"
-          className="w-full border p-2 rounded"
-          required
-        />
-
-        <textarea
-          name="content"
-          value={form.content}
-          onChange={handleChange}
-          placeholder="Konten"
-          className="w-full border p-2 rounded"
-          rows={4}
-          required
-        />
-
-        <select
-          name="status"
-          value={form.status}
-          onChange={handleChange}
-          className="w-full border p-2 rounded"
-        >
-          <option value="published">
-            Publish
-          </option>
-
-          <option value="draft">
-            Draft
-          </option>
-        </select>
-
-        <input
-          key={fileKey}
-          type="file"
-          name="image"
-          accept="image/*"
-          onChange={handleChange}
-        />
-
-        <div className="flex gap-2">
-          <button
-            type="submit"
-            disabled={submitting}
-            className="bg-blue-600 text-white px-4 py-2 rounded"
-          >
-            {submitting
-              ? "Loading..."
-              : editId
-              ? "Update News"
-              : "Tambah News"}
-          </button>
-
-          {editId && (
-            <button
-              type="button"
-              onClick={resetForm}
-              className="bg-gray-500 text-white px-4 py-2 rounded"
-            >
-              Batal
-            </button>
-          )}
+        <div className="mb-4">
+          <input
+            type="text"
+            placeholder="Judul"
+            className="w-full border p-3 rounded"
+            value={title}
+            onChange={(e) =>
+              setTitle(e.target.value)
+            }
+            required
+          />
         </div>
+
+        <div className="mb-4">
+          <textarea
+            placeholder="Konten"
+            className="w-full border p-3 rounded"
+            rows={4}
+            value={content}
+            onChange={(e) =>
+              setContent(e.target.value)
+            }
+            required
+          />
+        </div>
+
+        <div className="mb-4">
+          <select
+            className="w-full border p-3 rounded"
+            value={status}
+            onChange={(e) =>
+              setStatus(e.target.value)
+            }
+          >
+            <option value="published">
+              Publish
+            </option>
+
+            <option value="draft">
+              Draft
+            </option>
+          </select>
+        </div>
+
+        <div className="mb-4">
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) =>
+              setImage(e.target.files[0])
+            }
+          />
+        </div>
+
+        <button
+          type="submit"
+          className="bg-blue-600 text-white px-5 py-2 rounded"
+        >
+          Tambah News
+        </button>
       </form>
 
-      {/* ================= LIST ================= */}
+      {/* =========================================
+          LIST NEWS
+      ========================================= */}
 
-      {loading ? (
-        <p>Loading...</p>
-      ) : !Array.isArray(news) ||
-        news.length === 0 ? (
-        <p>Tidak ada data news</p>
-      ) : (
-        news.map((n) => (
+      <div className="space-y-5">
+        {news.map((item) => (
           <div
-            key={n.id}
-            className="bg-white p-4 rounded shadow mb-3"
+            key={item.id}
+            className="bg-white p-5 rounded shadow"
           >
-            <h3 className="font-semibold text-lg">
-              {n.title}
-            </h3>
+            <h2 className="text-2xl font-bold">
+              {item.title}
+            </h2>
 
-            <p className="text-sm text-gray-600 mb-2">
-              {n.content}
+            <p className="text-gray-600 mb-3">
+              {item.content}
             </p>
 
-            {/* IMAGE */}
-            {n.image && (
-              <img
-                src={resolveImage(n.image)}
-                alt={n.title}
-                className="w-40 h-28 object-cover rounded mb-2 border"
-                onError={(e) => {
-                  e.target.src =
-                    "https://via.placeholder.com/400x200?text=No+Image";
-                }}
-              />
-            )}
+            {/* =========================================
+                IMAGE FIX
+            ========================================= */}
 
-            {/* STATUS */}
+            <img
+              src={resolveImage(item.image)}
+              alt={item.title}
+              className="w-52 h-32 object-cover rounded border mb-3"
+              onError={(e) => {
+                e.target.src =
+                  "https://via.placeholder.com/400x200?text=No+Image";
+              }}
+            />
+
             <span
-              className={`text-xs px-2 py-1 rounded ${
-                n.status === "draft"
-                  ? "bg-yellow-200 text-yellow-800"
-                  : "bg-green-200 text-green-800"
+              className={`inline-block px-3 py-1 rounded text-sm mb-3 ${
+                item.status === "published"
+                  ? "bg-green-100 text-green-700"
+                  : "bg-yellow-100 text-yellow-700"
               }`}
             >
-              {n.status}
+              {item.status}
             </span>
 
-            {/* ACTION */}
-            <div className="flex gap-3 mt-3">
+            <div className="flex gap-4">
               <button
-                onClick={() => handleEdit(n)}
-                className="text-blue-600 text-sm"
+                onClick={() =>
+                  toggleStatus(item)
+                }
+                className="text-orange-500"
               >
-                Edit
-              </button>
-
-              <button
-                onClick={() => handleDelete(n.id)}
-                className="text-red-600 text-sm"
-              >
-                Hapus
+                {item.status === "published"
+                  ? "Jadikan Draft"
+                  : "Publish"}
               </button>
 
               <button
                 onClick={() =>
-                  handleToggleStatus(n)
+                  handleDelete(item.id)
                 }
-                className="text-yellow-600 text-sm"
+                className="text-red-500"
               >
-                {n.status === "published"
-                  ? "Jadikan Draft"
-                  : "Publish"}
+                Hapus
               </button>
             </div>
           </div>
-        ))
-      )}
+        ))}
+      </div>
     </div>
   );
 }
