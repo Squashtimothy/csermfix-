@@ -28,7 +28,7 @@ const resolveImage = (image) => {
     return image;
   }
 
-  // hapus slash depan jika ada
+  // hapus slash depan
   const cleanImage = image.replace(/^\/+/, "");
 
   return `${API_BASE}/uploads/${cleanImage}`;
@@ -57,28 +57,15 @@ export default function NewsManagement() {
     try {
       setLoading(true);
 
-      const res = await getNews();
+      const data = await getNews();
 
-      console.log("NEWS RESPONSE:", res);
+      console.log("NEWS:", data);
 
-      let data = [];
-
-      // array langsung
-      if (Array.isArray(res)) {
-        data = res;
+      if (Array.isArray(data)) {
+        setNews(data);
+      } else {
+        setNews([]);
       }
-
-      // axios response.data array
-      else if (Array.isArray(res.data)) {
-        data = res.data;
-      }
-
-      // nested data
-      else if (Array.isArray(res.data?.data)) {
-        data = res.data.data;
-      }
-
-      setNews(data);
     } catch (err) {
       console.error("LOAD NEWS ERROR:", err);
 
@@ -148,22 +135,16 @@ export default function NewsManagement() {
         formData.append("image", form.image);
       }
 
-      let response;
-
-      // UPDATE
       if (editId) {
-        response = await updateNews(editId, formData);
+        await updateNews(editId, formData);
 
         Swal.fire({
           icon: "success",
           title: "Berhasil",
           text: "News berhasil diupdate",
         });
-      }
-
-      // CREATE
-      else {
-        response = await createNews(formData);
+      } else {
+        await createNews(formData);
 
         Swal.fire({
           icon: "success",
@@ -171,8 +152,6 @@ export default function NewsManagement() {
           text: "News berhasil ditambahkan",
         });
       }
-
-      console.log("SUBMIT RESPONSE:", response);
 
       resetForm();
 
@@ -290,7 +269,7 @@ export default function NewsManagement() {
         Kelola News
       </h1>
 
-      {/* ================= FORM ================= */}
+      {/* FORM */}
 
       <form
         onSubmit={handleSubmit}
@@ -364,12 +343,11 @@ export default function NewsManagement() {
         </div>
       </form>
 
-      {/* ================= LIST ================= */}
+      {/* LIST */}
 
       {loading ? (
         <p>Loading...</p>
-      ) : !Array.isArray(news) ||
-        news.length === 0 ? (
+      ) : news.length === 0 ? (
         <p>Tidak ada data news</p>
       ) : (
         news.map((n) => (
@@ -385,20 +363,20 @@ export default function NewsManagement() {
               {n.content}
             </p>
 
-            {/* IMAGE */}
-            {n.image && (
-              <img
-                src={resolveImage(n.image)}
-                alt={n.title}
-                className="w-40 h-28 object-cover rounded mb-2 border"
-                onError={(e) => {
-                  e.target.src =
-                    "https://via.placeholder.com/400x200?text=No+Image";
-                }}
-              />
-            )}
+            {/* IMAGE FIX */}
+
+            <img
+              src={resolveImage(n.image)}
+              alt={n.title}
+              className="w-40 h-28 object-cover rounded mb-2 border"
+              onError={(e) => {
+                e.target.src =
+                  "https://via.placeholder.com/400x200?text=No+Image";
+              }}
+            />
 
             {/* STATUS */}
+
             <span
               className={`text-xs px-2 py-1 rounded ${
                 n.status === "draft"
@@ -410,6 +388,7 @@ export default function NewsManagement() {
             </span>
 
             {/* ACTION */}
+
             <div className="flex gap-3 mt-3">
               <button
                 onClick={() => handleEdit(n)}
