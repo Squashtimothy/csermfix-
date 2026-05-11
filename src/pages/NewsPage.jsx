@@ -1,190 +1,132 @@
-import React, {
-  useEffect,
-  useState,
-} from "react";
-
-import {
-  useParams,
-  useNavigate,
-} from "react-router-dom";
-
-/* =========================
-   IMPORT DEFAULT IMAGE
-========================= */
-
-import noImage from "../assets/no-image.png";
-
-/* =========================
-   API URL
-========================= */
+import { useEffect, useState, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 
 const API_URL =
   process.env.REACT_APP_API_URL ||
   "https://resilient-balance-production-57f8.up.railway.app";
 
 /* =========================
-   COMPONENT
+   FALLBACK IMAGE
 ========================= */
+
+const noImage =
+  "https://via.placeholder.com/400x200?text=No+Image";
 
 export default function NewsDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
 
-  const navigate =
-    useNavigate();
-
-  const [news, setNews] =
-    useState(null);
-
-  const [
-    latestNews,
-    setLatestNews,
-  ] = useState([]);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [error, setError] =
-    useState("");
+  const [news, setNews] = useState(null);
+  const [latestNews, setLatestNews] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   /* =========================
      FORMAT DATE
   ========================= */
 
-  const formatDate = (
-    date
-  ) => {
+  const formatDate = (date) => {
     if (!date) return "-";
 
-    return new Date(
-      date
-    ).toLocaleDateString(
-      "id-ID",
-      {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      }
-    );
+    return new Date(date).toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
   };
 
   /* =========================
      HANDLE IMAGE URL
   ========================= */
 
-  const getImageUrl = (
-    image
-  ) => {
-    // jika tidak ada image
-    if (!image) {
-      return noImage;
+  const getImageUrl = (img) => {
+    if (!img) return noImage;
+
+    // kalau sudah full url
+    if (img.startsWith("http")) {
+      return img;
     }
 
-    // jika full url
-    if (
-      image.startsWith(
-        "http"
-      )
-    ) {
-      return image;
+    // kalau path uploads
+    if (img.startsWith("/uploads")) {
+      return `${API_URL}${img}`;
     }
 
-    // jika sudah ada /uploads
-    if (
-      image.startsWith(
-        "/uploads"
-      )
-    ) {
-      return `${API_URL}${image}`;
-    }
-
-    // default
-    return `${API_URL}/uploads/${image}`;
+    return `${API_URL}/uploads/${img}`;
   };
+
+  /* =========================
+     FETCH DETAIL
+  ========================= */
+
+  const fetchDetail = useCallback(async () => {
+    try {
+      const response = await fetch(
+        `${API_URL}/api/news/${id}`
+      );
+
+      const data = await response.json();
+
+      console.log("DETAIL:", data);
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || "Failed fetch detail"
+        );
+      }
+
+      setNews(data);
+    } catch (err) {
+      console.error("DETAIL ERROR:", err);
+      setError(err.message);
+    }
+  }, [id]);
+
+  /* =========================
+     FETCH LATEST
+  ========================= */
+
+  const fetchLatest = useCallback(async () => {
+    try {
+      const response = await fetch(
+        `${API_URL}/api/news`
+      );
+
+      const data = await response.json();
+
+      console.log("LATEST:", data);
+
+      if (!Array.isArray(data)) {
+        setLatestNews([]);
+        return;
+      }
+
+      const filtered = data.filter(
+        (item) => item.id !== Number(id)
+      );
+
+      setLatestNews(filtered.slice(0, 5));
+    } catch (err) {
+      console.error("LATEST ERROR:", err);
+    }
+  }, [id]);
 
   /* =========================
      USE EFFECT
   ========================= */
 
   useEffect(() => {
-    const fetchAll =
-      async () => {
-        try {
-          setLoading(true);
+    const fetchAll = async () => {
+      setLoading(true);
 
-          /* =========================
-             FETCH DETAIL
-          ========================= */
+      await fetchDetail();
+      await fetchLatest();
 
-          const detailResponse =
-            await fetch(
-              `${API_URL}/api/news/${id}`
-            );
-
-          const detailData =
-            await detailResponse.json();
-
-          console.log(
-            "DETAIL NEWS:",
-            detailData
-          );
-
-          const newsData =
-            detailData.data ||
-            detailData;
-
-          setNews(newsData);
-
-          /* =========================
-             FETCH LATEST
-          ========================= */
-
-          const latestResponse =
-            await fetch(
-              `${API_URL}/api/news/published`
-            );
-
-          const latestData =
-            await latestResponse.json();
-
-          console.log(
-            "LATEST NEWS:",
-            latestData
-          );
-
-          const newsArray =
-            Array.isArray(
-              latestData
-            )
-              ? latestData
-              : latestData.data ||
-                [];
-
-          const filtered =
-            newsArray.filter(
-              (item) =>
-                item.id !==
-                Number(id)
-            );
-
-          setLatestNews(
-            filtered.slice(0, 5)
-          );
-        } catch (err) {
-          console.error(
-            "ERROR:",
-            err
-          );
-
-          setError(
-            "Gagal mengambil data news"
-          );
-        } finally {
-          setLoading(false);
-        }
-      };
+      setLoading(false);
+    };
 
     fetchAll();
-  }, [id]);
+  }, [fetchDetail, fetchLatest]);
 
   /* =========================
      LOADING
@@ -204,7 +146,7 @@ export default function NewsDetail() {
 
   if (error) {
     return (
-      <div className="text-center text-red-500 p-10">
+      <div className="text-center p-10 text-red-500">
         {error}
       </div>
     );
@@ -222,150 +164,101 @@ export default function NewsDetail() {
     );
   }
 
-  /* =========================
-     RENDER
-  ========================= */
-
   return (
-    <div className="bg-gray-100 min-h-screen py-6 px-4">
+    <div className="bg-gray-100 min-h-screen py-8 px-4">
       <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-6">
 
         {/* ================= MAIN CONTENT ================= */}
 
-        <div className="md:col-span-2 bg-white p-6 rounded-2xl shadow">
+        <div className="md:col-span-2 bg-white rounded-2xl shadow p-6">
 
           {/* BACK BUTTON */}
-
           <button
-            onClick={() =>
-              navigate("/#news")
-            }
-            className="text-green-600 mb-4 hover:underline"
+            onClick={() => navigate("/#news")}
+            className="text-green-600 mb-5 hover:underline"
           >
             ← Back
           </button>
 
           {/* IMAGE */}
-
           <img
-            src={getImageUrl(
-              news.image
-            )}
-            alt={
-              news.title ||
-              "news image"
-            }
-            className="w-full h-[350px] object-cover rounded-lg mb-6"
+            src={getImageUrl(news.image)}
+            alt={news.title || "news image"}
+            className="w-full h-[400px] object-cover rounded-xl mb-5"
             onError={(e) => {
-              e.target.onerror =
-                null;
-
-              e.target.src =
-                noImage;
+              e.target.src = noImage;
             }}
           />
 
           {/* TITLE */}
-
           <h1 className="text-3xl font-bold mb-3">
             {news.title}
           </h1>
 
           {/* META */}
-
-          <p className="text-sm text-gray-500 mb-6">
-            {formatDate(
-              news.created_at
-            )}{" "}
-            • Admin
+          <p className="text-gray-500 text-sm mb-6">
+            {formatDate(news.created_at)} • Admin
           </p>
 
           {/* CONTENT */}
-
-          <div className="text-gray-700 leading-relaxed whitespace-pre-line text-justify">
+          <div className="text-gray-700 leading-relaxed whitespace-pre-line">
             {news.content}
           </div>
         </div>
 
         {/* ================= SIDEBAR ================= */}
 
-        <div className="space-y-4">
+        <div className="space-y-5">
 
           {/* LATEST NEWS */}
+          <div className="bg-white rounded-2xl shadow p-5">
 
-          <div className="bg-white p-4 rounded-2xl shadow">
-
-            <h2 className="font-semibold text-lg mb-4 border-b pb-2">
+            <h2 className="text-xl font-bold mb-4 border-b pb-2">
               Latest News
             </h2>
 
-            {latestNews.length ===
-            0 ? (
+            {latestNews.length === 0 ? (
               <p className="text-gray-400 text-sm">
-                No news available
+                Tidak ada news
               </p>
             ) : (
-              latestNews.map(
-                (item) => (
-                  <div
-                    key={
-                      item.id
-                    }
-                    onClick={() =>
-                      navigate(
-                        `/news/${item.id}`
-                      )
-                    }
-                    className="flex gap-3 mb-4 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition"
-                  >
+              latestNews.map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() =>
+                    navigate(`/news/${item.id}`)
+                  }
+                  className="flex gap-3 mb-4 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition"
+                >
 
-                    {/* SIDEBAR IMAGE */}
+                  {/* SIDEBAR IMAGE */}
+                  <img
+                    src={getImageUrl(item.image)}
+                    alt={item.title || "news"}
+                    className="w-24 h-20 object-cover rounded-lg"
+                    onError={(e) => {
+                      e.target.src = noImage;
+                    }}
+                  />
 
-                    <img
-                      src={getImageUrl(
-                        item.image
-                      )}
-                      alt={
-                        item.title
-                      }
-                      className="w-20 h-16 object-cover rounded"
-                      onError={(
-                        e
-                      ) => {
-                        e.target.onerror =
-                          null;
+                  {/* SIDEBAR CONTENT */}
+                  <div className="flex-1">
+                    <p className="font-semibold text-sm line-clamp-2">
+                      {item.title}
+                    </p>
 
-                        e.target.src =
-                          noImage;
-                      }}
-                    />
-
-                    {/* CONTENT */}
-
-                    <div>
-                      <p className="text-sm font-medium line-clamp-2">
-                        {
-                          item.title
-                        }
-                      </p>
-
-                      <p className="text-xs text-gray-400 mt-1">
-                        {formatDate(
-                          item.created_at
-                        )}
-                      </p>
-                    </div>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {formatDate(item.created_at)}
+                    </p>
                   </div>
-                )
-              )
+                </div>
+              ))
             )}
           </div>
 
           {/* OPTIONAL WIDGET */}
-
-          <div className="bg-white p-4 rounded-2xl shadow text-center text-gray-400">
-            Advertisement /
-            Widget Space
+          <div className="bg-white rounded-2xl shadow p-6 text-center text-gray-400">
+            Advertisement / Widget Space
           </div>
         </div>
       </div>
