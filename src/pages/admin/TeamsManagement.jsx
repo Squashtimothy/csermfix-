@@ -24,22 +24,22 @@ const resolveImage = (image) => {
     return "https://via.placeholder.com/300x300?text=No+Image";
   }
 
-  // jika sudah full url
+  // full url
   if (image.startsWith("http")) {
     return image;
   }
 
-  // jika /uploads/teams/xxx.png
+  // /uploads/teams/xxx.png
   if (image.startsWith("/uploads")) {
     return `${API_BASE}${image}`;
   }
 
-  // jika uploads/teams/xxx.png
+  // uploads/teams/xxx.png
   if (image.startsWith("uploads")) {
     return `${API_BASE}/${image}`;
   }
 
-  // fallback
+  // teams/xxx.png
   return `${API_BASE}/uploads/${image}`;
 };
 
@@ -57,7 +57,7 @@ export default function TeamsManagement() {
   const [editId, setEditId] = useState(null);
 
   /* =========================
-     LOAD DATA
+     LOAD TEAMS
   ========================= */
 
   const loadTeams = async () => {
@@ -66,13 +66,15 @@ export default function TeamsManagement() {
 
       console.log("TEAM RESPONSE:", response);
 
+      let data = [];
+
       if (Array.isArray(response)) {
-        setTeams(response);
+        data = response;
       } else if (Array.isArray(response?.data)) {
-        setTeams(response.data);
-      } else {
-        setTeams([]);
+        data = response.data;
       }
+
+      setTeams(data);
     } catch (error) {
       console.error("LOAD TEAM ERROR:", error);
       setTeams([]);
@@ -131,7 +133,7 @@ export default function TeamsManagement() {
 
       setEditId(null);
 
-      await loadTeams();
+      loadTeams();
     } catch (error) {
       console.error("SUBMIT TEAM ERROR:", error);
     }
@@ -144,7 +146,7 @@ export default function TeamsManagement() {
   const handleDelete = async (id) => {
     try {
       await deleteTeam(id);
-      await loadTeams();
+      loadTeams();
     } catch (error) {
       console.error("DELETE TEAM ERROR:", error);
     }
@@ -184,6 +186,7 @@ export default function TeamsManagement() {
         className="bg-white p-4 rounded shadow mb-6"
       >
         <div className="space-y-4">
+
           <input
             type="text"
             name="name"
@@ -248,83 +251,91 @@ export default function TeamsManagement() {
       {/* LIST TEAM */}
 
       <div className="space-y-4">
-        {teams.map((team) => {
-          const imageSource =
-            team.image || team.image_url || "";
+        {teams.length > 0 ? (
+          teams.map((team) => {
+            const imageSource =
+              team.image ||
+              team.image_url ||
+              "";
 
-          console.log(
-            "TEAM IMAGE:",
-            imageSource
-          );
+            const finalImage =
+              resolveImage(imageSource);
 
-          return (
-            <div
-              key={team.id}
-              className="bg-white p-4 rounded shadow flex gap-4"
-            >
-              {/* IMAGE */}
+            console.log(
+              "FINAL TEAM IMAGE:",
+              finalImage
+            );
 
-              <img
-                src={resolveImage(imageSource)}
-                alt={team.name}
-                className="w-24 h-24 object-cover rounded border"
-                onError={(e) => {
-                  console.log(
-                    "TEAM IMAGE FAILED:",
-                    resolveImage(imageSource)
-                  );
+            return (
+              <div
+                key={team.id}
+                className="bg-white p-4 rounded shadow flex gap-4"
+              >
+                {/* IMAGE */}
 
-                  e.target.onerror = null;
+                <img
+                  src={finalImage}
+                  alt={team.name}
+                  className="w-24 h-24 object-cover rounded border"
+                  onError={(e) => {
+                    e.target.onerror = null;
 
-                  e.target.src =
-                    "https://via.placeholder.com/300x300?text=No+Image";
-                }}
-              />
+                    e.target.src =
+                      "https://via.placeholder.com/300x300?text=No+Image";
+                  }}
+                />
 
-              {/* CONTENT */}
+                {/* CONTENT */}
 
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <h2 className="font-bold text-xl">
-                    {team.name}
-                  </h2>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h2 className="font-bold text-xl">
+                      {team.name}
+                    </h2>
 
-                  <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded">
-                    {team.division}
-                  </span>
-                </div>
+                    <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded">
+                      {team.division}
+                    </span>
+                  </div>
 
-                <p className="text-gray-600 mb-2">
-                  {team.position}
-                </p>
+                  <p className="text-gray-600 mb-2">
+                    {team.position}
+                  </p>
 
-                <p className="text-gray-700">
-                  {team.bio}
-                </p>
+                  <p className="text-gray-700">
+                    {team.bio}
+                  </p>
 
-                <div className="flex gap-3 mt-3">
-                  <button
-                    onClick={() =>
-                      handleEdit(team)
-                    }
-                    className="text-blue-600"
-                  >
-                    Edit
-                  </button>
+                  <div className="flex gap-3 mt-3">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleEdit(team)
+                      }
+                      className="text-blue-600"
+                    >
+                      Edit
+                    </button>
 
-                  <button
-                    onClick={() =>
-                      handleDelete(team.id)
-                    }
-                    className="text-red-600"
-                  >
-                    Hapus
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleDelete(team.id)
+                      }
+                      className="text-red-600"
+                    >
+                      Hapus
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        ) : (
+          <div className="text-gray-500">
+            Belum ada data team.
+          </div>
+        )}
       </div>
     </div>
   );
