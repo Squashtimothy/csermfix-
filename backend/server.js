@@ -42,59 +42,45 @@ const db = require("./config/db");
 })();
 
 /* ======================
-   FORCE CORS FIX
+   CORS FIX
 ====================== */
 
-app.use((req, res, next) => {
-  const allowedOrigins = [
-    "http://localhost:3000",
-    "https://cserm.unas.ac.id",
-    "https://www.cserm.unas.ac.id",
-  ];
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://cserm.unas.ac.id",
+  "https://www.cserm.unas.ac.id",
+];
 
-  const origin = req.headers.origin;
+const corsOptions = {
+  origin: function (origin, callback) {
+    // allow requests with no origin
+    if (!origin) return callback(null, true);
 
-  if (allowedOrigins.includes(origin)) {
-    res.header("Access-Control-Allow-Origin", origin);
-  }
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log("Blocked by CORS:", origin);
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
 
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-  );
+  credentials: true,
 
-  res.header(
-    "Access-Control-Allow-Methods",
-    "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-  );
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 
-  res.header(
-    "Access-Control-Allow-Credentials",
-    "true"
-  );
+  allowedHeaders: [
+    "Origin",
+    "X-Requested-With",
+    "Content-Type",
+    "Accept",
+    "Authorization",
+  ],
+};
 
-  // Handle preflight request
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(200);
-  }
+app.use(cors(corsOptions));
 
-  next();
-});
-
-/* ======================
-   CORS
-====================== */
-
-app.use(
-  cors({
-    origin: [
-      "http://localhost:3000",
-      "https://cserm.unas.ac.id",
-      "https://www.cserm.unas.ac.id",
-    ],
-    credentials: true,
-  })
-);
+// Handle preflight requests
+app.options("*", cors(corsOptions));
 
 /* ======================
    BODY PARSER
