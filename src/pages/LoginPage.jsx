@@ -46,7 +46,9 @@ export default function LoginPage() {
 
   useEffect(() => {
     const role = localStorage.getItem("role");
-    const token = localStorage.getItem("token");
+
+    const token =
+      localStorage.getItem("token");
 
     if (token && role) {
       const routes = {
@@ -119,7 +121,12 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      // clear old login
       localStorage.clear();
+
+      /* =========================
+         LOGIN REQUEST
+      ========================= */
 
       const res = await axios.post(
         `${API_BASE_URL}/api/auth/login`,
@@ -128,12 +135,6 @@ export default function LoginPage() {
           password: form.password,
         },
         {
-          headers: {
-            "Content-Type":
-              "application/json",
-            "X-Requested-With":
-              "XMLHttpRequest",
-          },
           timeout: 10000,
         }
       );
@@ -155,9 +156,15 @@ export default function LoginPage() {
          SAVE LOCAL STORAGE
       ========================= */
 
-      localStorage.setItem("token", token);
+      localStorage.setItem(
+        "token",
+        token
+      );
 
-      localStorage.setItem("role", role);
+      localStorage.setItem(
+        "role",
+        role
+      );
 
       if (serverUsername) {
         localStorage.setItem(
@@ -188,7 +195,7 @@ export default function LoginPage() {
       });
 
       /* =========================
-         REDIRECT BASED ON ROLE
+         REDIRECT
       ========================= */
 
       const routes = {
@@ -201,12 +208,17 @@ export default function LoginPage() {
         replace: true,
       });
     } catch (err) {
-      console.error("LOGIN ERROR:", err);
+      console.error(
+        "LOGIN ERROR:",
+        err
+      );
 
       let msg =
         "Terjadi kesalahan saat login";
 
-      if (err.response?.status === 401) {
+      if (
+        err.response?.status === 401
+      ) {
         msg =
           "Username atau password salah!";
       } else if (
@@ -259,7 +271,8 @@ export default function LoginPage() {
             alt="Logo"
             className="h-20 mx-auto mb-4 object-contain"
             onError={(e) =>
-              (e.target.style.display = "none")
+              (e.target.style.display =
+                "none")
             }
           />
 
