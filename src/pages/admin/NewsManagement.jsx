@@ -27,15 +27,23 @@ const resolveImage = (image) => {
     return "https://via.placeholder.com/400x200?text=No+Image";
   }
 
-  // jika sudah full url
+  // jika full url
   if (image.startsWith("http")) {
     return image;
   }
 
-  // hapus slash depan
-  const cleanImage = image.replace(/^\/+/, "");
+  // jika sudah /uploads/news/xxx.png
+  if (image.startsWith("/uploads")) {
+    return `${API_BASE}${image}`;
+  }
 
-  return `${API_BASE}/uploads/${cleanImage}`;
+  // jika uploads/news/xxx.png
+  if (image.startsWith("uploads")) {
+    return `${API_BASE}/${image}`;
+  }
+
+  // jika hanya news/xxx.png
+  return `${API_BASE}/uploads/${image}`;
 };
 
 export default function NewsManagement() {
@@ -79,13 +87,13 @@ export default function NewsManagement() {
     } catch (err) {
       console.error("LOAD NEWS ERROR:", err);
 
-      setNews([]);
-
       Swal.fire({
         icon: "error",
         title: "Error",
         text: "Gagal mengambil data news",
       });
+
+      setNews([]);
     } finally {
       setLoading(false);
     }
@@ -357,7 +365,7 @@ export default function NewsManagement() {
         </div>
       </form>
 
-      {/* LIST NEWS */}
+      {/* NEWS LIST */}
 
       {loading ? (
         <p>Loading...</p>
@@ -369,7 +377,6 @@ export default function NewsManagement() {
             const imageSource =
               n.image ||
               n.image_url ||
-              n.thumbnail ||
               "";
 
             console.log(
@@ -394,12 +401,14 @@ export default function NewsManagement() {
 
                 <img
                   src={resolveImage(imageSource)}
-                  alt={n.title || "news-image"}
+                  alt={n.title}
                   className="w-40 h-28 object-cover rounded border bg-gray-100 mb-3"
                   onError={(e) => {
                     console.log(
                       "IMAGE FAILED:",
-                      imageSource
+                      resolveImage(
+                        imageSource
+                      )
                     );
 
                     e.target.onerror = null;
