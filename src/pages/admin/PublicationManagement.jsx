@@ -15,28 +15,30 @@ export default function PublicationManagement() {
 
   const [rows, setRows] = useState([]);
 
-  const [meta, setMeta] = useState({
-    page: 1,
-    totalPages: 1,
-    total: 0,
-  });
-
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
 
-  const [search, setSearch] = useState("");
-  const [sort, setSort] = useState("year_desc");
-  const [page, setPage] = useState(1);
+  const [saving, setSaving] = useState(false);
 
   const [editingId, setEditingId] = useState(null);
 
   const [form, setForm] = useState({
     title: "",
-    authors: [""],
+
+    authors: [
+      {
+        name: "",
+        bold: false,
+      },
+    ],
+
     year: new Date().getFullYear(),
+
     journal: "",
+
     url: "",
+
     doi: "",
+
     keywords: "",
   });
 
@@ -48,37 +50,26 @@ export default function PublicationManagement() {
     try {
       setLoading(true);
 
-      const res = await getPublications({
-        page,
-        limit: 10,
-        sort,
-        search,
-      });
+      const res = await getPublications();
 
-      console.log("PUBLICATION RESPONSE:", res);
-
-      setRows(Array.isArray(res?.data) ? res.data : []);
-
-      setMeta(
-        res?.meta || {
-          page: 1,
-          totalPages: 1,
-          total: 0,
-        }
+      setRows(
+        Array.isArray(res?.data)
+          ? res.data
+          : []
       );
     } catch (err) {
-      console.error("GET PUBLICATIONS ERROR:", err);
+      console.error(err);
 
       Swal.fire(
         "Error",
         err?.response?.data?.message ||
-          "Gagal mengambil data publication",
+          "Gagal mengambil publication",
         "error"
       );
     } finally {
       setLoading(false);
     }
-  }, [page, sort, search]);
+  }, []);
 
   useEffect(() => {
     fetchPublications();
@@ -104,7 +95,15 @@ export default function PublicationManagement() {
   const addAuthor = () => {
     setForm((prev) => ({
       ...prev,
-      authors: [...prev.authors, ""],
+
+      authors: [
+        ...prev.authors,
+
+        {
+          name: "",
+          bold: false,
+        },
+      ],
     }));
   };
 
@@ -115,15 +114,27 @@ export default function PublicationManagement() {
 
     setForm((prev) => ({
       ...prev,
+
       authors:
-        updated.length > 0 ? updated : [""],
+        updated.length > 0
+          ? updated
+          : [
+              {
+                name: "",
+                bold: false,
+              },
+            ],
     }));
   };
 
-  const changeAuthor = (index, value) => {
+  const changeAuthor = (
+    index,
+    field,
+    value
+  ) => {
     const updated = [...form.authors];
 
-    updated[index] = value;
+    updated[index][field] = value;
 
     setForm((prev) => ({
       ...prev,
@@ -140,11 +151,22 @@ export default function PublicationManagement() {
 
     setForm({
       title: "",
-      authors: [""],
+
+      authors: [
+        {
+          name: "",
+          bold: false,
+        },
+      ],
+
       year: new Date().getFullYear(),
+
       journal: "",
+
       url: "",
+
       doi: "",
+
       keywords: "",
     });
   };
@@ -159,16 +181,23 @@ export default function PublicationManagement() {
     try {
       setSaving(true);
 
-      // FILTER AUTHOR KOSONG
-      const cleanAuthors = form.authors
-        .map((a) => a.trim())
-        .filter(Boolean);
+      const cleanAuthors =
+        form.authors.filter(
+          (a) => a.name.trim() !== ""
+        );
 
       const payload = {
         title: form.title.trim(),
 
-        // SUPPORT HTML BOLD
-        authors: cleanAuthors.join(", "),
+        authors: cleanAuthors
+          .map((author) => {
+            if (author.bold) {
+              return `<strong>${author.name}</strong>`;
+            }
+
+            return author.name;
+          })
+          .join(", "),
 
         year: Number(form.year),
 
@@ -180,8 +209,6 @@ export default function PublicationManagement() {
 
         keywords: form.keywords.trim(),
       };
-
-      console.log("PAYLOAD:", payload);
 
       if (
         !payload.title ||
@@ -222,10 +249,7 @@ export default function PublicationManagement() {
 
       await fetchPublications();
     } catch (err) {
-      console.error(
-        "SAVE PUBLICATION ERROR:",
-        err
-      );
+      console.error(err);
 
       Swal.fire(
         "Error",
@@ -251,8 +275,36 @@ export default function PublicationManagement() {
       authors: item.authors
         ? item.authors
             .split(",")
-            .map((a) => a.trim())
-        : [""],
+            .map((a) => {
+              const trimmed =
+                a.trim();
+
+              const isBold =
+                trimmed.includes(
+                  "<strong>"
+                );
+
+              return {
+                name: trimmed
+                  .replace(
+                    /<strong>/g,
+                    ""
+                  )
+                  .replace(
+                    /<\/strong>/g,
+                    ""
+                  )
+                  .trim(),
+
+                bold: isBold,
+              };
+            })
+        : [
+            {
+              name: "",
+              bold: false,
+            },
+          ],
 
       year: item.year || "",
 
@@ -278,10 +330,15 @@ export default function PublicationManagement() {
   const onDelete = async (id) => {
     const confirm = await Swal.fire({
       title: "Hapus publication?",
+
       text: "Data tidak bisa dikembalikan",
+
       icon: "warning",
+
       showCancelButton: true,
+
       confirmButtonText: "Hapus",
+
       cancelButtonText: "Batal",
     });
 
@@ -298,10 +355,7 @@ export default function PublicationManagement() {
 
       await fetchPublications();
     } catch (err) {
-      console.error(
-        "DELETE PUBLICATION ERROR:",
-        err
-      );
+      console.error(err);
 
       Swal.fire(
         "Error",
@@ -318,13 +372,18 @@ export default function PublicationManagement() {
         Kelola Publication
       </h1>
 
-      {/* FORM */}
+      {/* =========================
+          FORM
+      ========================= */}
+
       <form
         onSubmit={onSubmit}
         className="bg-white shadow rounded-2xl p-6 mb-6"
       >
         <div className="space-y-4">
+
           {/* TITLE */}
+
           <input
             type="text"
             name="title"
@@ -335,48 +394,82 @@ export default function PublicationManagement() {
           />
 
           {/* AUTHORS */}
+
           <div>
             <label className="font-medium">
               Authors
             </label>
 
-            <div className="space-y-2 mt-2">
+            <div className="space-y-3 mt-2">
+
               {form.authors.map(
                 (author, index) => (
                   <div
                     key={index}
-                    className="flex gap-2"
+                    className="border rounded-xl p-3"
                   >
-                    <input
-                      type="text"
-                      value={author}
-                      onChange={(e) =>
-                        changeAuthor(
-                          index,
-                          e.target.value
-                        )
-                      }
-                      placeholder={`Author ${
-                        index + 1
-                      }`}
-                      className="flex-1 border rounded-xl px-4 py-3"
-                    />
+                    <div className="flex gap-2 items-center">
 
-                    {form.authors.length >
-                      1 && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          removeAuthor(index)
+                      <input
+                        type="text"
+                        value={author.name}
+                        onChange={(e) =>
+                          changeAuthor(
+                            index,
+                            "name",
+                            e.target.value
+                          )
                         }
-                        className="px-3 py-2 bg-red-500 text-white rounded-xl"
-                      >
-                        X
-                      </button>
-                    )}
+                        placeholder={`Author ${
+                          index + 1
+                        }`}
+                        className="flex-1 border rounded-xl px-4 py-3"
+                      />
+
+                      {/* CHECKBOX BOLD */}
+
+                      <label className="flex items-center gap-2 text-sm whitespace-nowrap">
+
+                        <input
+                          type="checkbox"
+                          checked={
+                            author.bold
+                          }
+                          onChange={(e) =>
+                            changeAuthor(
+                              index,
+                              "bold",
+                              e.target.checked
+                            )
+                          }
+                        />
+
+                        Bold
+
+                      </label>
+
+                      {/* DELETE */}
+
+                      {form.authors.length >
+                        1 && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            removeAuthor(
+                              index
+                            )
+                          }
+                          className="px-3 py-2 bg-red-500 text-white rounded-xl"
+                        >
+                          X
+                        </button>
+                      )}
+
+                    </div>
                   </div>
                 )
               )}
+
             </div>
 
             <button
@@ -386,15 +479,10 @@ export default function PublicationManagement() {
             >
               + Tambah Author
             </button>
-
-            <p className="text-xs text-gray-500 mt-2">
-              Untuk bold nama gunakan:
-              {" "}
-              {"<strong>Nama</strong>"}
-            </p>
           </div>
 
           {/* YEAR */}
+
           <input
             type="number"
             name="year"
@@ -405,6 +493,7 @@ export default function PublicationManagement() {
           />
 
           {/* JOURNAL */}
+
           <input
             type="text"
             name="journal"
@@ -415,6 +504,7 @@ export default function PublicationManagement() {
           />
 
           {/* URL */}
+
           <input
             type="text"
             name="url"
@@ -425,6 +515,7 @@ export default function PublicationManagement() {
           />
 
           {/* DOI */}
+
           <input
             type="text"
             name="doi"
@@ -435,6 +526,7 @@ export default function PublicationManagement() {
           />
 
           {/* KEYWORDS */}
+
           <textarea
             name="keywords"
             placeholder="Keywords"
@@ -445,6 +537,7 @@ export default function PublicationManagement() {
           />
 
           {/* BUTTON */}
+
           <button
             type="submit"
             disabled={saving}
@@ -456,40 +549,16 @@ export default function PublicationManagement() {
               ? "Update"
               : "Simpan"}
           </button>
+
         </div>
       </form>
 
-      {/* FILTER */}
-      <div className="flex gap-3 mb-4">
-        <input
-          type="text"
-          placeholder="Search..."
-          value={search}
-          onChange={(e) =>
-            setSearch(e.target.value)
-          }
-          className="flex-1 border rounded-xl px-4 py-2"
-        />
+      {/* =========================
+          TABLE
+      ========================= */}
 
-        <select
-          value={sort}
-          onChange={(e) =>
-            setSort(e.target.value)
-          }
-          className="border rounded-xl px-4 py-2"
-        >
-          <option value="year_desc">
-            Terbaru
-          </option>
-
-          <option value="year_asc">
-            Terlama
-          </option>
-        </select>
-      </div>
-
-      {/* TABLE */}
       <div className="bg-white shadow rounded-2xl overflow-hidden">
+
         {loading ? (
           <div className="p-6 text-center">
             Loading...
@@ -508,12 +577,12 @@ export default function PublicationManagement() {
                 {item.title}
               </h2>
 
-              {/* SUPPORT HTML BOLD */}
               <p
                 className="text-sm text-gray-600"
                 dangerouslySetInnerHTML={{
-                  __html:
-                    item.authors || "",
+                  __html: String(
+                    item.authors || ""
+                  ),
                 }}
               />
 
@@ -522,8 +591,11 @@ export default function PublicationManagement() {
               </p>
 
               <div className="flex gap-3 mt-4">
+
                 <button
-                  onClick={() => onEdit(item)}
+                  onClick={() =>
+                    onEdit(item)
+                  }
                   className="text-blue-600"
                 >
                   Edit
@@ -537,40 +609,12 @@ export default function PublicationManagement() {
                 >
                   Hapus
                 </button>
+
               </div>
             </div>
           ))
         )}
-      </div>
 
-      {/* PAGINATION */}
-      <div className="flex justify-between items-center mt-4">
-        <button
-          disabled={page <= 1}
-          onClick={() =>
-            setPage((p) => p - 1)
-          }
-          className="px-4 py-2 border rounded-xl disabled:opacity-40"
-        >
-          Prev
-        </button>
-
-        <span>
-          Page {meta.page} /{" "}
-          {meta.totalPages}
-        </span>
-
-        <button
-          disabled={
-            page >= meta.totalPages
-          }
-          onClick={() =>
-            setPage((p) => p + 1)
-          }
-          className="px-4 py-2 border rounded-xl disabled:opacity-40"
-        >
-          Next
-        </button>
       </div>
     </div>
   );
