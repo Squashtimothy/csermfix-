@@ -57,17 +57,17 @@ export default function PublicationManagement() {
 
       console.log("PUBLICATION RESPONSE:", res);
 
-      setRows(Array.isArray(res.data) ? res.data : []);
+      setRows(Array.isArray(res?.data) ? res.data : []);
 
       setMeta(
-        res.meta || {
+        res?.meta || {
           page: 1,
           totalPages: 1,
           total: 0,
         }
       );
     } catch (err) {
-      console.error(err);
+      console.error("GET PUBLICATIONS ERROR:", err);
 
       Swal.fire(
         "Error",
@@ -110,16 +110,19 @@ export default function PublicationManagement() {
 
   const removeAuthor = (index) => {
     const updated = [...form.authors];
+
     updated.splice(index, 1);
 
     setForm((prev) => ({
       ...prev,
-      authors: updated,
+      authors:
+        updated.length > 0 ? updated : [""],
     }));
   };
 
   const changeAuthor = (index, value) => {
     const updated = [...form.authors];
+
     updated[index] = value;
 
     setForm((prev) => ({
@@ -156,31 +159,49 @@ export default function PublicationManagement() {
     try {
       setSaving(true);
 
+      // FILTER AUTHOR KOSONG
+      const cleanAuthors = form.authors
+        .map((a) => a.trim())
+        .filter(Boolean);
+
       const payload = {
         title: form.title.trim(),
-        authors: form.authors.filter(Boolean).join(", "),
-        year: form.year,
+
+        // SUPPORT HTML BOLD
+        authors: cleanAuthors.join(", "),
+
+        year: Number(form.year),
+
         journal: form.journal.trim(),
+
         url: form.url.trim(),
+
         doi: form.doi.trim(),
+
         keywords: form.keywords.trim(),
       };
+
+      console.log("PAYLOAD:", payload);
 
       if (
         !payload.title ||
         !payload.authors ||
-        !payload.year ||
-        !payload.url
+        !payload.year
       ) {
+        setSaving(false);
+
         return Swal.fire(
           "Error",
-          "Title, authors, year, dan url wajib diisi",
+          "Title, authors, dan year wajib diisi",
           "error"
         );
       }
 
       if (editingId) {
-        await updatePublication(editingId, payload);
+        await updatePublication(
+          editingId,
+          payload
+        );
 
         Swal.fire(
           "Success",
@@ -201,7 +222,10 @@ export default function PublicationManagement() {
 
       await fetchPublications();
     } catch (err) {
-      console.error(err);
+      console.error(
+        "SAVE PUBLICATION ERROR:",
+        err
+      );
 
       Swal.fire(
         "Error",
@@ -223,13 +247,21 @@ export default function PublicationManagement() {
 
     setForm({
       title: item.title || "",
+
       authors: item.authors
-        ? item.authors.split(",").map((a) => a.trim())
+        ? item.authors
+            .split(",")
+            .map((a) => a.trim())
         : [""],
+
       year: item.year || "",
+
       journal: item.journal || "",
+
       url: item.url || "",
+
       doi: item.doi || "",
+
       keywords: item.keywords || "",
     });
 
@@ -266,7 +298,10 @@ export default function PublicationManagement() {
 
       await fetchPublications();
     } catch (err) {
-      console.error(err);
+      console.error(
+        "DELETE PUBLICATION ERROR:",
+        err
+      );
 
       Swal.fire(
         "Error",
@@ -289,6 +324,7 @@ export default function PublicationManagement() {
         className="bg-white shadow rounded-2xl p-6 mb-6"
       >
         <div className="space-y-4">
+          {/* TITLE */}
           <input
             type="text"
             name="title"
@@ -298,36 +334,49 @@ export default function PublicationManagement() {
             className="w-full border rounded-xl px-4 py-3"
           />
 
+          {/* AUTHORS */}
           <div>
-            <label className="font-medium">Authors</label>
+            <label className="font-medium">
+              Authors
+            </label>
 
             <div className="space-y-2 mt-2">
-              {form.authors.map((author, index) => (
-                <div
-                  key={index}
-                  className="flex gap-2"
-                >
-                  <input
-                    type="text"
-                    value={author}
-                    onChange={(e) =>
-                      changeAuthor(index, e.target.value)
-                    }
-                    placeholder={`Author ${index + 1}`}
-                    className="flex-1 border rounded-xl px-4 py-3"
-                  />
+              {form.authors.map(
+                (author, index) => (
+                  <div
+                    key={index}
+                    className="flex gap-2"
+                  >
+                    <input
+                      type="text"
+                      value={author}
+                      onChange={(e) =>
+                        changeAuthor(
+                          index,
+                          e.target.value
+                        )
+                      }
+                      placeholder={`Author ${
+                        index + 1
+                      }`}
+                      className="flex-1 border rounded-xl px-4 py-3"
+                    />
 
-                  {form.authors.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeAuthor(index)}
-                      className="px-3 py-2 bg-red-500 text-white rounded-xl"
-                    >
-                      X
-                    </button>
-                  )}
-                </div>
-              ))}
+                    {form.authors.length >
+                      1 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          removeAuthor(index)
+                        }
+                        className="px-3 py-2 bg-red-500 text-white rounded-xl"
+                      >
+                        X
+                      </button>
+                    )}
+                  </div>
+                )
+              )}
             </div>
 
             <button
@@ -337,8 +386,15 @@ export default function PublicationManagement() {
             >
               + Tambah Author
             </button>
+
+            <p className="text-xs text-gray-500 mt-2">
+              Untuk bold nama gunakan:
+              {" "}
+              {"<strong>Nama</strong>"}
+            </p>
           </div>
 
+          {/* YEAR */}
           <input
             type="number"
             name="year"
@@ -348,6 +404,7 @@ export default function PublicationManagement() {
             className="w-full border rounded-xl px-4 py-3"
           />
 
+          {/* JOURNAL */}
           <input
             type="text"
             name="journal"
@@ -357,6 +414,7 @@ export default function PublicationManagement() {
             className="w-full border rounded-xl px-4 py-3"
           />
 
+          {/* URL */}
           <input
             type="text"
             name="url"
@@ -366,6 +424,7 @@ export default function PublicationManagement() {
             className="w-full border rounded-xl px-4 py-3"
           />
 
+          {/* DOI */}
           <input
             type="text"
             name="doi"
@@ -375,6 +434,7 @@ export default function PublicationManagement() {
             className="w-full border rounded-xl px-4 py-3"
           />
 
+          {/* KEYWORDS */}
           <textarea
             name="keywords"
             placeholder="Keywords"
@@ -384,6 +444,7 @@ export default function PublicationManagement() {
             className="w-full border rounded-xl px-4 py-3"
           />
 
+          {/* BUTTON */}
           <button
             type="submit"
             disabled={saving}
@@ -404,17 +465,26 @@ export default function PublicationManagement() {
           type="text"
           placeholder="Search..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) =>
+            setSearch(e.target.value)
+          }
           className="flex-1 border rounded-xl px-4 py-2"
         />
 
         <select
           value={sort}
-          onChange={(e) => setSort(e.target.value)}
+          onChange={(e) =>
+            setSort(e.target.value)
+          }
           className="border rounded-xl px-4 py-2"
         >
-          <option value="year_desc">Terbaru</option>
-          <option value="year_asc">Terlama</option>
+          <option value="year_desc">
+            Terbaru
+          </option>
+
+          <option value="year_asc">
+            Terlama
+          </option>
         </select>
       </div>
 
@@ -438,9 +508,14 @@ export default function PublicationManagement() {
                 {item.title}
               </h2>
 
-              <p className="text-sm text-gray-600">
-                {item.authors}
-              </p>
+              {/* SUPPORT HTML BOLD */}
+              <p
+                className="text-sm text-gray-600"
+                dangerouslySetInnerHTML={{
+                  __html:
+                    item.authors || "",
+                }}
+              />
 
               <p className="text-sm mt-1">
                 {item.year}
@@ -455,7 +530,9 @@ export default function PublicationManagement() {
                 </button>
 
                 <button
-                  onClick={() => onDelete(item.id)}
+                  onClick={() =>
+                    onDelete(item.id)
+                  }
                   className="text-red-600"
                 >
                   Hapus
@@ -470,19 +547,26 @@ export default function PublicationManagement() {
       <div className="flex justify-between items-center mt-4">
         <button
           disabled={page <= 1}
-          onClick={() => setPage((p) => p - 1)}
+          onClick={() =>
+            setPage((p) => p - 1)
+          }
           className="px-4 py-2 border rounded-xl disabled:opacity-40"
         >
           Prev
         </button>
 
         <span>
-          Page {meta.page} / {meta.totalPages}
+          Page {meta.page} /{" "}
+          {meta.totalPages}
         </span>
 
         <button
-          disabled={page >= meta.totalPages}
-          onClick={() => setPage((p) => p + 1)}
+          disabled={
+            page >= meta.totalPages
+          }
+          onClick={() =>
+            setPage((p) => p + 1)
+          }
           className="px-4 py-2 border rounded-xl disabled:opacity-40"
         >
           Next
